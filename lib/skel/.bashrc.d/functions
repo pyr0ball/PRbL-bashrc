@@ -1,0 +1,130 @@
+#!/bin/bash
+# pyr0ball script functions library
+
+# Initial Vars
+scriptname=${0##*/}
+rundir=${0%/*}
+runuser=$(whoami)
+
+# Utilities (Setting up colors and bounding boxes)
+if [[ "$TERM" != "linux" ]] ; then
+  red=$(echo -e "\033[38;5;1m")   # red
+  grn=$(echo -e "\033[38;5;2m")   # green
+  ylw=$(echo -e "\033[38;5;3m")   # yellow
+  blu=$(echo -e "\033[38;5;27m")  # blue
+  lbl=$(echo -e "\033[38;5;69m")  # light blue
+  mag=$(echo -e "\033[38;5;5m")   # magenta
+  cyn=$(echo -e "\033[38;5;6m")   # cyan
+  pur=$(echo -e "\033[38;5;135m") # purple
+  ong=$(echo -e "\033[38;5;166m") # orange
+  lyl=$(echo -e "\033[38;5;228m") # light yellow
+  lrd=$(echo -e "\033[38;5;196m") # light red
+  norm=$(echo -e "\033[38;5;9m")  # default/normal                                                                      
+  #
+  bld=$(echo -e "\033[1m")    # bold
+  unl=$(echo -e "\033[4m")    # underline
+  blk=$(echo -e "\033[7m")    # blinking not supported in our xterm, so reverse instead
+  nln=$(echo -e "\033[24")
+  dfl=$(echo -e "\e[0m")
+fi
+
+# For drawing pretty boxes
+terminal_width=$(tput cols)
+if [ $terminal_width -le 81 ] ; then
+  BOXWIDTH=$((terminal_width - 1))
+else
+  BOXWIDTH=80
+fi
+top_border=$(echo -e '\u2501')
+left_border=$(echo -e '\u2503')
+right_border=$(echo -e '\u2503')
+left_top_border=$(echo -e '\u250f')
+right_top_border=$(echo -e '\u2513')
+left_bottom_border=$(echo -e '\u2517')
+right_bottom_border=$(echo -e '\u251b')
+
+repchar() {
+  n=1
+  while [ $n -le $2 ] ; do
+    echo -n "$1"
+    n=$((n+1))
+  done
+}
+
+boxtop() {
+  echo -n "$left_top_border"
+  repchar "$top_border" $((BOXWIDTH-1))
+  echo -n "$right_top_border"
+  echo
+}
+
+boxbottom() {
+  echo -n "$left_bottom_border"
+  repchar "$top_border" $((BOXWIDTH-1))
+  echo -n "$right_bottom_border"
+  echo
+}
+
+boxline() {
+  echo -e "$left_border $1\r\033[${BOXWIDTH}C$right_border"
+}
+
+boxseparator(){
+  echo -n "$left_border"
+  repchar "-" $((BOXWIDTH-1))
+  echo -n "$right_border"
+  echo
+}
+
+success(){
+  echo -e "\n"
+	boxtop
+	boxline " ${scriptname} ${grn}SUCCESS${dfl}$@"
+	boxbottom
+	exit 0
+}
+
+warn(){
+  echo -e "\n"
+  ec=$?
+  boxtop
+	boxline "${lrd}WARNING${lyl}[${ong}code=${red}$ec${lyl}]: $@${dfl}"
+  boxbottom
+}
+
+fail(){
+	ec=$?
+	echo -e "\n"
+	boxtop
+	boxline "${lrd}FAILED${lyl}[${ong}code=${red}$ec${lyl}]: $@${dfl}"
+	boxbottom
+	exit $ec
+}
+
+pushd(){
+    command pushd "$@" > /dev/null
+}
+
+popd(){
+    command popd "$@" > /dev/null
+}
+
+popdfail(){
+	ec=$?
+	popd
+	$(exit $ec) #restore the exit code
+	fail "$@"
+}
+
+logger(){
+  #$@ 2>&1 | tee >(ts "[$scriptname][%d-%m-%y %H_%M_%S]" > $logfile) # This version of prepend requires the 'ts' utility from 'moreutils' package
+  $@ 2>&1 | tee >(while IFS= read -r line; do printf '[%s] %s\n' "${scriptname}][$(date '+%Y-%m-%d %H:%M:%S')" "$line"; done >> $logfile)
+}
+
+ctrl_c(){
+  echo -e "\n"
+	fail "User interrupted with Ctrl-C"
+}
+
+# ensure ctrl-c to cancel script ends the entire process and not just the current function
+trap ctrl_c INT

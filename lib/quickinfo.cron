@@ -1,0 +1,2 @@
+# quickinfo cronjob
+0 */1 * * * $HOME/.bashrc.d/11-quickinfo.bashrc -c

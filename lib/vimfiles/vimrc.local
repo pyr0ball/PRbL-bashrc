@@ -1,7 +1,7 @@
 if $TERM !~ "linux"
 	syntax on
 	set t_Co=256
-	colorscheme bdv_crystallite
+	colorscheme crystallite
 else
 	syntax on
 	colorscheme default
