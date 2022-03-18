@@ -10,6 +10,15 @@ runuser=$(whoami)
 #-----------------------------------------------------------------#
 
 VERSION=1.0
+bashrc_append="if [ -n \"$BASH_VERSION\" ]; then
+    # include .bashrc if it exists
+    if [ -d \"$HOME/.bashrc.d\" ]; then
+        for file in $HOME/.bashrc.d/*.bashrc ; do
+            source \"$file\"
+        done
+    fi
+fi"
+packages="git python3-dev python3-pillow vim"
 
 #-----------------------------------------------------------------#
 # Script-specific Funcitons
@@ -30,9 +39,12 @@ usage(){
 }
 
 install(){
+    
     scp -r $rundir/lib/skel/* $HOME
     cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/vim*/colors/crystallite.vim
     cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+    echo -e $bashrc_append >> $HOME/.bashrc
+    
 }
 
 remove(){
