@@ -7,8 +7,12 @@ rundir="${0%/*}"
 runuser="$(whoami)"
 pretty_date="`date +%Y-%m-%d_%H-%M-%S`"
 
-# Utilities (Setting up colors and bounding boxes)
+# Escape characters (if your shell uses a different one, you can modify it here)
+# By default this is using the usual bash escape code
 ESC=$( printf "\033")
+
+# Utilities (Setting up colors and bounding boxes)
+
 if [[ "$TERM" != "linux" ]] ; then
   red=$(echo -e "${ESC}[38;5;1m")   # red
   grn=$(echo -e "${ESC}[38;5;2m")   # green
@@ -50,7 +54,7 @@ right_top_border=$(echo -e '\u2513')
 left_bottom_border=$(echo -e '\u2517')
 right_bottom_border=$(echo -e '\u251b')
 # ---------------------------------------#
-top_double
+
 repchar() {
   n=1
   while [ $n -le $2 ] ; do
@@ -74,7 +78,7 @@ boxbottom() {
 }
 
 boxline() {
-  echo -e "$left_border $1\r\033[${BOXWIDTH}C$right_border"
+  echo -e "$left_border $1\r${ESC}[${BOXWIDTH}C$right_border"
 }
 
 boxseparator(){
@@ -146,7 +150,6 @@ trap ctrl_c INT
 select_option(){
 
   # little helpers for terminal print control and key input
-  ESC=$( printf "\033")
   cursor_blink_on()  { printf "$ESC[?25h"; }
   cursor_blink_off() { printf "$ESC[?25l"; }
   cursor_to()        { printf "$ESC[$1;${2:-1}H"; }
