@@ -2,31 +2,37 @@
 # pyr0ball script functions library
 
 # Initial Vars
-scriptname=${0##*/}
-rundir=${0%/*}
-runuser=$(whoami)
+scriptname="${0##*/}"
+rundir="${0%/*}"
+runuser="$(whoami)"
+pretty_date="`date +%Y-%m-%d_%H-%M-%S`"
 
 # Utilities (Setting up colors and bounding boxes)
+ESC=$( printf "\033")
 if [[ "$TERM" != "linux" ]] ; then
-  red=$(echo -e "\033[38;5;1m")   # red
-  grn=$(echo -e "\033[38;5;2m")   # green
-  ylw=$(echo -e "\033[38;5;3m")   # yellow
-  blu=$(echo -e "\033[38;5;27m")  # blue
-  lbl=$(echo -e "\033[38;5;69m")  # light blue
-  mag=$(echo -e "\033[38;5;5m")   # magenta
-  cyn=$(echo -e "\033[38;5;6m")   # cyan
-  pur=$(echo -e "\033[38;5;135m") # purple
-  ong=$(echo -e "\033[38;5;166m") # orange
-  lyl=$(echo -e "\033[38;5;228m") # light yellow
-  lrd=$(echo -e "\033[38;5;196m") # light red
-  norm=$(echo -e "\033[38;5;9m")  # default/normal                                                                      
+  red=$(echo -e "${ESC}[38;5;1m")   # red
+  grn=$(echo -e "${ESC}[38;5;2m")   # green
+  ylw=$(echo -e "${ESC}[38;5;3m")   # yellow
+  blu=$(echo -e "${ESC}[38;5;27m")  # blue
+  lbl=$(echo -e "${ESC}[38;5;69m")  # light blue
+  mag=$(echo -e "${ESC}[38;5;5m")   # magenta
+  cyn=$(echo -e "${ESC}[38;5;6m")   # cyan
+  pur=$(echo -e "${ESC}[38;5;135m") # purple
+  ong=$(echo -e "${ESC}[38;5;166m") # orange
+  lyl=$(echo -e "${ESC}[38;5;228m") # light yellow
+  lrd=$(echo -e "${ESC}[38;5;196m") # light red
+  norm=$(echo -e "${ESC}[38;5;9m")  # default/normal                                                                      
   #
-  bld=$(echo -e "\033[1m")    # bold
-  unl=$(echo -e "\033[4m")    # underline
-  blk=$(echo -e "\033[7m")    # blinking not supported in our xterm, so reverse instead
-  nln=$(echo -e "\033[24")
-  dfl=$(echo -e "\e[0m")
+  bld=$(echo -e "${ESC}[1m")    # bold
+  unl=$(echo -e "${ESC}[4m")    # underline
+  blk=$(echo -e "${ESC}[7m")    # blinking not supported in our xterm, so reverse instead
+  nln=$(echo -e "${ESC}[24")    # not-underline
+  dfl=$(echo -e "${ESC}[0m")    # restore default
 fi
+
+# Extra Unicode Character Manipulation
+return_arrow=$(echo -e '\u21B6')
+enter_arrow$(echo -e '\u21B5')
 
 # For drawing pretty boxes
 terminal_width=$(tput cols)
@@ -35,6 +41,7 @@ if [ $terminal_width -le 81 ] ; then
 else
   BOXWIDTH=80
 fi
+# ---------------------------------------#
 top_border=$(echo -e '\u2501')
 left_border=$(echo -e '\u2503')
 right_border=$(echo -e '\u2503')
@@ -42,7 +49,8 @@ left_top_border=$(echo -e '\u250f')
 right_top_border=$(echo -e '\u2513')
 left_bottom_border=$(echo -e '\u2517')
 right_bottom_border=$(echo -e '\u251b')
-
+# ---------------------------------------#
+top_double
 repchar() {
   n=1
   while [ $n -le $2 ] ; do
@@ -228,7 +236,6 @@ select_opt(){
 
 multiselect(){
   # little helpers for terminal print control and key input
-  ESC=$( printf "\033")
   cursor_blink_on()   { printf "$ESC[?25h"; }
   cursor_blink_off()  { printf "$ESC[?25l"; }
   cursor_to()         { printf "$ESC[$1;${2:-1}H"; }
