@@ -30,3 +30,15 @@ case `select_opt "${options[@]}"` in
   1) echo "selected No";;
   *) echo "selected ${options[$?]}";;
 esac
+
+# Example for above multiselect functions
+my_options=(   "Option 1"  "Option 2"  "Option 3" )
+preselection=( "true"      "true"      "false"    )
+
+multiselect result my_options preselection
+
+idx=0
+for option in "${my_options[@]}"; do
+    echo -e "$option\t=> ${result[idx]}"
+    ((idx++))
+done
