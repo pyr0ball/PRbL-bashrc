@@ -88,6 +88,14 @@ boxseparator(){
   echo
 }
 
+boxborder(){
+  boxtop
+  for line in "$@" ; do
+    boxline "$line"
+  done
+  boxbottom
+}
+
 success(){
   echo -e "\n"
 	boxtop
