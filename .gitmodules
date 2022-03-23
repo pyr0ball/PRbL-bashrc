@@ -1,0 +1,3 @@
+[submodule "pyr0-bash-functions"]
+	path = pyr0-bash-functions
+	url = https://gitbucket.pyroballpcbs.com/git/pyr0ball/pyr0-bash-functions.git

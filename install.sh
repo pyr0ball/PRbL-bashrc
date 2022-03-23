@@ -18,7 +18,14 @@ bashrc_append="if [ -n \"$BASH_VERSION\" ]; then
         done
     fi
 fi"
-packages="git python3-dev python3-pillow vim"
+
+packages=(
+    git
+    vim
+    nfs-kernel-server
+    nfs-common
+)
+globalinstalldir="/usr/lib/pyr0-bash"
 
 #-----------------------------------------------------------------#
 # Script-specific Funcitons
@@ -39,8 +46,9 @@ usage(){
 }
 
 install(){
-    
-    scp -r $rundir/lib/skel/* $HOME
+    mkdir -p ${globalinstalldir}
+    cp ${rundir}/functions ${globalinstalldir}/functions
+    cp -r $rundir/lib/skel/* $HOME
     cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/vim*/colors/crystallite.vim
     cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     echo -e $bashrc_append >> $HOME/.bashrc
