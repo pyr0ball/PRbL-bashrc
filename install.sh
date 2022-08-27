@@ -93,6 +93,9 @@ install(){
         cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
     if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
+        echo -e $bashrc_append >> $HOME/.bashrc && center "bashc.d installed..." || fail "Unable to append .bashrc"
+    fi
+    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser -
     check-deps
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
