@@ -79,6 +79,12 @@ remove(){
     done
 }
 
+install-deps(){
+    if [[ $runuser == root ]] ; then
+        apt install -y $packages && success "Dependencies installed successfully!" || fail "Dependency install failed"
+    else
+       fail "Dependency install must be run as user 'root'"
+    fi
 }
 
 update(){
@@ -101,6 +107,8 @@ case $1 in
         remove
         ;;
     -d | --dependencies)
+        install-deps
+        ;;
     -u | --update)
         update
         #sleep $ratelimit
