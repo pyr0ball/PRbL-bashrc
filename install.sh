@@ -29,7 +29,7 @@ packages=(
     net-tools
     update-notifier-common
 )
-globalinstalldir="/usr/lib/pyr0-bash"
+
 
 #-----------------------------------------------------------------#
 # Script-specific Funcitons
@@ -39,7 +39,7 @@ usage(){
     boxtop
     boxline "${lyl}$scriptname - v${VERSION}:${dfl}"
     boxline "${lbl}Usage:${dfl}"
-    boxline "${lyl}$scriptname ${bld}[args]"
+    boxline "${lyl}$scriptname ${bld}[args]${dfl}"
     boxseparator
     boxline "[args:]"
     boxline "   -i [--install]"
