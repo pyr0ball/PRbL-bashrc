@@ -75,7 +75,11 @@ install(){
         cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
         cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
-    echo -e $bashrc_append >> $HOME/.bashrc
+    if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
+        echo -e $bashrc_append >> $HOME/.bashrc && success "Installation complete!" || fail "Unable to append .bashrc"
+    else
+        success "Installation complete!"
+    fi
 }
 
 remove(){
