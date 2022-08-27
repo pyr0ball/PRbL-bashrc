@@ -1,5 +1,6 @@
 #!/bin/bash
 # initial vars
+VERSION=0.1
 rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
@@ -11,15 +12,21 @@ globalinstalldir="$HOME/.local/share/pyr0-bash"
 #-----------------------------------------------------------------#
 
 VERSION=1.0
-bashrc_append="if [ -n \"$BASH_VERSION\" ]; then
+read -r -d bashrc_append << EOF
+# Pyr0ball's Bash Functions library v$VERSION and greeting page setup
+export pyr0-bash-functions="\$HOME/.local/share/pyr0-bash/functions"
+"if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
-    if [ -d \"$HOME/.bashrc.d\" ]; then
-        for file in $HOME/.bashrc.d/*.bashrc ; do
-            source \"$file\"
+    if [ -d \"\$HOME/.bashrc.d\" ]; then
+        for file in \$HOME/.bashrc.d/*.bashrc ; do
+            source \"\$file\"
         done
     fi
 fi"
 
+EOF
+
+# List of dependency packaged to be istalled via apt
 packages=(
     git
     vim
@@ -60,7 +67,7 @@ detectvim(){
 
 install(){
     mkdir -p ${globalinstalldir}
-    cp ${rundir}/functions ${globalinstalldir}/functions
+    cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
     cp -r ${rundir}/lib/skel/* $HOME
     cp -r ${rundir}/lib/skel/.* $HOME
     detectvim

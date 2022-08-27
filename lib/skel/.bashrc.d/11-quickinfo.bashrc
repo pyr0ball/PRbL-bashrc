@@ -11,7 +11,7 @@
 
 scriptname=${0##*/}
 rundir=$(cd `dirname $0` && pwd)
-source $rundir/functions
+source $pyr0-bash-functions
 
 # Set to only run on interactive sessions (Disabled as cache
 # generation is non-interactive, so this would cause outdated
