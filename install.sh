@@ -50,7 +50,7 @@ usage(){
 }
 
 detectvim(){
-    if [ -d /usr/share/vim] ; then
+    if [ -d /usr/share/vim ] ; then
         viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
     else
         viminstall=null
