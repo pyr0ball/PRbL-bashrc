@@ -1,7 +1,7 @@
 #!/bin/bash
 # initial vars
 rundir=${0%/*}
-source ${rundir}/functions
+source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
 runuser=$(whoami)
 
