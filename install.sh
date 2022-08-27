@@ -63,8 +63,11 @@ install(){
     cp ${rundir}/functions ${globalinstalldir}/functions
     cp -r $rundir/lib/skel/* $HOME
     cp -r $rundir/lib/skel/.* $HOME
-    cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/vim*/colors/crystallite.vim
-    cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+    detectvim
+    if [[ $viminstall != null ]] ; then
+        cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/vim80/colors/crystallite.vim
+        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+    fi
     echo -e $bashrc_append >> $HOME/.bashrc
 }
 
