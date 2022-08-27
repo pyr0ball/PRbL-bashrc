@@ -24,6 +24,9 @@ packages=(
     vim
     nfs-kernel-server
     nfs-common
+    lm-sensors
+    net-tools
+    update-notifier-common
 )
 globalinstalldir="/usr/lib/pyr0-bash"
 
@@ -49,10 +52,10 @@ install(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/functions ${globalinstalldir}/functions
     cp -r $rundir/lib/skel/* $HOME
+    cp -r $rundir/lib/skel/.* $HOME
     cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/vim*/colors/crystallite.vim
     cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     echo -e $bashrc_append >> $HOME/.bashrc
-    
 }
 
 remove(){
