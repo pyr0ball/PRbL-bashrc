@@ -6,7 +6,10 @@ else
 	syntax on
 	colorscheme elflord
 endif
-		    
+
+" disable mouse input
+set mouse-=a
+
 filetype plugin indent on
 " show existing tab with 2 spaces width
 set tabstop=2
