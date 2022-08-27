@@ -90,6 +90,7 @@ install-deps(){
 update(){
     pushd $rundir
     remove
+    git stash -m "$pretty_date stashing changes before update to latest"
     git fetch && git pull
     install
     popd
