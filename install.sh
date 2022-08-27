@@ -65,6 +65,23 @@ detectvim(){
     fi
 }
 
+check-deps(){
+  for bin in $packages ; do
+    local _bin=$(which $bin | grep -c "/")
+    if [[ $_bin == 0 ]] ; then
+      bins_missing="${bins_missing} $bin"
+    fi
+  done
+  local _bins_missing=$(echo -e \"${bins_missing}\" | grep -c \"*\")
+  if [[ $_bins_missing == 0 ]] ; then
+    bins_missing="false"
+  fi
+}
+
+install-deps(){
+    sudo /bin/bash -c "apt install -y $packages"
+}
+
 install(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
@@ -76,10 +93,23 @@ install(){
         cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
     if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
-        echo -e $bashrc_append >> $HOME/.bashrc && success "Installation complete!" || fail "Unable to append .bashrc"
-    else
-        success "Installation complete!"
+    check-deps
+    if [[ "$bins_missing" != "false" ]] ; then
+        warn "Some of the utilities needed by this script are missing"
+        echo -e "Missing utilities:"
+        echo -e "$bins_missing"
+        echo -e "Would you like to install? (this will require root password)"
+        utilsmissing_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${utilsmissing_menu[@]}"` in
+            0)  install-deps ;;
+            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+        esac
     fi
+    boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes"
+    success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
 }
 
 remove(){
