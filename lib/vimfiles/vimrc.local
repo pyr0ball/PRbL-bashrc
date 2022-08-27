@@ -4,7 +4,7 @@ if $TERM !~ "linux"
 	colorscheme crystallite
 else
 	syntax on
-	colorscheme default
+	colorscheme elflord
 endif
 		    
 filetype plugin indent on

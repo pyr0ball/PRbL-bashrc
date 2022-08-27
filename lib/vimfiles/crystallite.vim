@@ -1,6 +1,6 @@
 " Vim color file - crystallite
 " Original colorscheme credit tomsik68 https://github.com/tomsik68/vim-crystallite
-" Adapted for BDV use by Alan Weinstock - 2016/09/30
+" Adapted for personal use by Alan Weinstock - 2016/09/30
 if version > 580
 	hi clear
 	if exists("syntax_on")
