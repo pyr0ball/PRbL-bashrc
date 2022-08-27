@@ -4,6 +4,7 @@ rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
 runuser=$(whoami)
+globalinstalldir="$HOME/.local/share/pyr0-bash"
 
 #-----------------------------------------------------------------#
 # Script-specific Parameters
