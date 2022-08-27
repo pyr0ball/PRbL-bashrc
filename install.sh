@@ -96,6 +96,7 @@ install(){
         echo -e $bashrc_append >> $HOME/.bashrc && center "bashc.d installed..." || fail "Unable to append .bashrc"
     fi
     crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser -
+    mkdir -p $HOME/.quickinfo
     bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
     clear
     check-deps
