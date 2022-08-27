@@ -72,7 +72,13 @@ install(){
 }
 
 remove(){
-    echo -e "\n"
+    sudo rm -rf ${globalinstalldir}
+    for file in $(pushd lib/skel/ ; find ; popd) ; do
+        rm $HOME/$file 2>&1 >dev/null
+        rmdir $HOME/$file 2>&1 >dev/null
+    done
+}
+
 }
 
 update(){
