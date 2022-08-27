@@ -49,6 +49,15 @@ usage(){
     boxbottom
 }
 
+detectvim(){
+    if [ -d /usr/share/vim] ; then
+        viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
+    else
+        viminstall=null
+        boxborder "vim is not currently installed, unable to set up colorscheme and formatting"
+    fi
+}
+
 install(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/functions ${globalinstalldir}/functions
