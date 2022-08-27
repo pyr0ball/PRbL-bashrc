@@ -1,6 +1,6 @@
 #!/bin/bash
 # initial vars
-VERSION=0.1
+VERSION=0.3
 rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
