@@ -93,31 +93,28 @@ update(){
 # Options and Arguments Parser
 #------------------------------------------------------#
 
-if [[ $runuser == root ]] ; then
-    case $1 in
-        -i | --install)
-            install
-            ;;
-        -r | --remove)
-            remove
-            ;;
-        -u | --update)
-            update
-            #sleep $ratelimit
-            exit 0
-            ;;
-        -h | --help)
-            usage
-            ;;
-        *)
-            warn "Invalid argument $@"
-            usage
-            #exit 2
-            ;;
-    esac
-else
-    fail "Must be run as user 'root'"
-fi
+case $1 in
+    -i | --install)
+        install
+        ;;
+    -r | --remove)
+        remove
+        ;;
+    -d | --dependencies)
+    -u | --update)
+        update
+        #sleep $ratelimit
+        exit 0
+        ;;
+    -h | --help)
+        usage
+        ;;
+    *)
+        warn "Invalid argument $@"
+        usage
+        #exit 2
+        ;;
+esac
 #------------------------------------------------------#
 # Script begins here
 #------------------------------------------------------#
