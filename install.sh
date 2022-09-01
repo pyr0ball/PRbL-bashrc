@@ -21,15 +21,14 @@ globalinstalldir="/usr/share/prbl"
 read -r -d bashrc_append << EOF
 # Pyr0ball's Reductive Bash Language (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions="${installdir}/functions"
-"if [ -n \"\$BASH_VERSION\" ]; then
+if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
     if [ -d \"\$HOME/.bashrc.d\" ]; then
         for file in \$HOME/.bashrc.d/*.bashrc ; do
             source \"\$file\"
         done
     fi
-fi"
-
+fi
 EOF
 
 # List of dependency packaged to be istalled via apt
@@ -66,7 +65,7 @@ detectvim(){
         viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
     else
         viminstall=null
-        boxborder "vim is not currently installed, unable to set up colorscheme and formatting"
+        warn "vim is not currently installed, unable to set up colorscheme and formatting"
     fi
 }
 
@@ -83,6 +82,11 @@ check-deps(){
     fi
 }
 
+install-deps(){
+    sudo /bin/bash -c "apt install -y $(echo -e $packages)"
+    depsinstalled=true
+}
+
 install(){
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
@@ -91,11 +95,6 @@ install(){
         installdir="${userinstalldir}"
         userinstall
     fi
-}
-
-install-deps(){
-    sudo /bin/bash -c "apt install -y $packages"
-    depsinstalled=true
 }
 
 userinstall(){
