@@ -134,20 +134,8 @@ userinstall(){
 globalinstall(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
-    cp -r ${rundir}/lib/skel/* $HOME
-    cp -r ${rundir}/lib/skel/.* $HOME
-    detectvim
-    if [[ $viminstall != null ]] ; then
-        cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
-        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
-    fi
-    if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
-        echo -e $bashrc_append >> $HOME/.bashrc && center "bashc.d installed..." || fail "Unable to append .bashrc"
-    fi
-    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser -
-    mkdir -p $HOME/.quickinfo
-    bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
-    clear
+    cp -r ${rundir}/lib/skel/* /etc/skel/
+    cp -r ${rundir}/lib/skel/.* /etc/skel/
     check-deps
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
@@ -169,8 +157,20 @@ globalinstall(){
             1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
     fi
-    boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes"
-    success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
+    detectvim
+    if [[ $viminstall != null ]] ; then
+        cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
+        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+    fi
+    if [[ $(cat /etc/skel/.bashrc | grep -c prbl) = 0 ]] ; then
+        echo -e $bashrc_append >> /etc/skel/.bashrc && center "bashc.d installed..." || fail "Unable to append .bashrc"
+    fi
+    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser -
+    sensors-detect --auto
+    mkdir -p $HOME/.quickinfo
+    bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
+    clear
+    success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
 }
 
 
