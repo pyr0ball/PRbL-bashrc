@@ -32,15 +32,14 @@ fi"
 EOF
 
 # List of dependency packaged to be istalled via apt
-packages=(
-    git
-    vim
-    nfs-kernel-server
-    nfs-common
-    lm-sensors
-    net-tools
-    update-notifier-common
-)
+packages="git
+vim
+nfs-kernel-server
+nfs-common
+lm-sensors
+net-tools
+update-notifier-common
+"
 
 
 #-----------------------------------------------------------------#
