@@ -149,7 +149,7 @@ globalinstall(){
         )
         case `select_opt "${utilsmissing_menu[@]}"` in
             0)  until [[ $depsinstalled == true ]] ; do
-                    center "${grn}Installing dependencies...${dfl}"
+                    boxborder "${grn}Installing dependencies...${dfl}"
                     spin
                     install-deps
                 done
@@ -164,7 +164,7 @@ globalinstall(){
         cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     fi
     if [[ $(cat /etc/skel/.bashrc | grep -c prbl) = 0 ]] ; then
-        echo -e $bashrc_append >> /etc/skel/.bashrc && center "bashc.d installed..." || fail "Unable to append .bashrc"
+        echo -e $bashrc_append >> /etc/skel/.bashrc && boxborder "bashc.d installed..." || fail "Unable to append .bashrc"
     fi
     crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser -
     sensors-detect --auto
