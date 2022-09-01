@@ -11,7 +11,7 @@
 
 scriptname=${0##*/}
 rundir=$(cd `dirname $0` && pwd)
-source $prbl-functions
+source $prbl_functions
 
 # Set to only run on interactive sessions (Disabled as cache
 # generation is non-interactive, so this would cause outdated
