@@ -5,6 +5,7 @@
 
 # initial vars
 VERSION=1.1
+scripttitle="Pyr0ball's Reductive Bash Language Installer - v$VERSION"
 rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
@@ -47,22 +48,19 @@ packages=(
 #-----------------------------------------------------------------#
 
 usage(){
-    boxtop
-    boxline "${lyl}$scriptname - v${VERSION}:${dfl}"
-    boxline "${lbl}Usage:${dfl}"
-    boxline "${lyl}$scriptname ${bld}[args]${dfl}"
-    boxseparator
-    boxline "[args:]"
-    boxline "   -i [--install]"
-    boxline "   -r [--remove]"
-    boxline "   -u [--update]"
-    boxline "   -h [--help]"
-    boxline ""
-    boxline "Running this installer as 'root' will install"
-    boxline "globally to $globalinstalldir"
-    boxline "You must run as 'root' for this script to"
-    boxline "automatically resolve dependencies"
-    boxbottom
+    boxborder \
+        "${lyl}$scripttitle${dfl}" \
+        "${lbl}Usage:${dfl}" \
+        "${lyl}./$scriptname ${bld}[args]${dfl}" \
+        "$(boxseparator)" \
+        "[args:]" \
+        "   -i [--install]" \
+        "   -r [--remove]" \
+        "   -u [--update]" \
+        "   -h [--help]" \
+        "" \
+        "Running this installer as 'root' will install globally to $globalinstalldir" \
+        "You must run as 'root' for this script to automatically resolve dependencies"
 }
 
 detectvim(){
