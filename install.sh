@@ -10,6 +10,7 @@ rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
 runuser=$(whoami)
+users=($(ls /home/))
 userinstalldir="$HOME/.local/share/prbl"
 globalinstalldir="/usr/share/prbl"
 
@@ -135,9 +136,9 @@ userinstall(){
 globalinstall(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
-    #cp -r ${rundir}/lib/skel/* /etc/skel/
-    scp -r ${rundir}/lib/skel/.* /etc/skel/
     check-deps
+    detectvim
+    
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
@@ -158,15 +159,24 @@ globalinstall(){
             1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
     fi
-    detectvim
-    if [[ $viminstall != null ]] ; then
-        cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
-        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
-    fi
-    if [[ $(cat /etc/skel/.bashrc | grep -c prbl) = 0 ]] ; then
-        echo -e $bashrc_append >> /etc/skel/.bashrc && boxborder "bashc.d installed..." || fail "Unable to append .bashrc"
-    fi
-    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser -
+
+    boxborder "Which users should PRbL be installed for?"
+    multiselect result users
+    idx=0
+    for selecteduser in "${users[@]}"; do
+        if [[ "${result[idx]}" == "true" ]] ; then
+            #cp -r ${rundir}/lib/skel/* /etc/skel/
+            scp -r ${rundir}/lib/skel/.* /home/${selecteduser}
+            if [[ $viminstall != null ]] ; then
+                cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
+                cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+            fi
+            if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) = 0 ]] ; then
+                echo -e $bashrc_append >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || fail "Unable to append .bashrc"
+            fi
+            crontab -l -u $selecteduser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $selecteduser -
+        fi
+    done   
     sensors-detect --auto
     mkdir -p $HOME/.quickinfo
     bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
