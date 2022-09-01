@@ -99,10 +99,17 @@ install-deps(){
 }
 
 userinstall(){
+    # Create install directory under user's home directory
     mkdir -p ${userinstalldir}
+
+    # Copy functions first
     cp ${rundir}/pyr0-bash-functions/functions ${userinstalldir}/functions
+
+    # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
     scp -r ${rundir}/lib/skel/.* $HOME
+
+    # Check for dependent applications and warn user if any are missing
     check-deps
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
@@ -114,31 +121,48 @@ userinstall(){
         boxborder "Press 'Enter' key when ready to proceed"
         read proceed
     fi
+
+    # Check for and parse the installed vim version
     detectvim
+
+    # If vim is installed, add config files for colorization and expandtab
     if [[ $viminstall != null ]] ; then
         mkdir -p ${HOME}/.vim/colors
         cp $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
         cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
+
+    # Check for existing bashrc config, append if missing
     if [[ $(cat ${HOME}/.bashrc | grep -c prbl) = 0 ]] ; then
         echo -e $bashrc_append >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
     fi
-    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser - && boxborder "QuickInfo cron task created." || warn "QuickInfo cron task creation failed. Check ${lbl}crontab -e${dfl} for errors"
+
+    # Check crontab for quickinfo cron task
+    if [[ -z $(crontab -l | grep quickinfo) ]] ; then
+        crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser - && boxborder "QuickInfo cron task created." || warn "QuickInfo cron task creation failed. Check ${lbl}crontab -e${dfl} for errors"
+    fi
+
+    # Create the quickinfo cache directory
     mkdir -p $HOME/.quickinfo
+
+    # If all required dependencies are installed, launch initial cache creation
     if [[ "$bins_missing" == "false" ]] ; then
         bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
     fi
-    clear
+    #clear
     boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
     success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
 }
 
 globalinstall(){
+    # Create global install directory
     mkdir -p ${globalinstalldir}
+
+    # Copy functions
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
+
+    # Check for dependent applications and offer to install
     check-deps
-    detectvim
-    
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
@@ -160,27 +184,37 @@ globalinstall(){
         esac
     fi
 
+    # Prompt the user to specify which users to install the quickinfo script for
     boxborder "Which users should PRbL be installed for?"
-    multiselect result users
+    multiselect result users "false"
+
+    # For each user, compare input choice and apply installs
     idx=0
     for selecteduser in "${users[@]}"; do
+        # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             #cp -r ${rundir}/lib/skel/* /etc/skel/
             scp -r ${rundir}/lib/skel/.* /home/${selecteduser}
-            if [[ $viminstall != null ]] ; then
-                cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
-                cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
-            fi
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) = 0 ]] ; then
                 echo -e $bashrc_append >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || fail "Unable to append .bashrc"
             fi
             crontab -l -u $selecteduser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $selecteduser -
+            mkdir -p /home/${selecteduser}/.quickinfo
+            if [[ "$bins_missing" == "false" ]] ; then
+                su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc -c
+            fi
         fi
-    done   
-    sensors-detect --auto
-    mkdir -p $HOME/.quickinfo
-    bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
-    clear
+    done
+
+    detectvim
+    if [[ $viminstall != null ]] ; then
+        cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
+        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+    fi
+    if [ ! -z $(which sensors-detect) ] ; then
+        sensors-detect --auto
+    fi
+    #clear
     success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
 }
 
