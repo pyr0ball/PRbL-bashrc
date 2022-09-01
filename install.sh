@@ -102,30 +102,32 @@ userinstall(){
     cp ${rundir}/pyr0-bash-functions/functions ${userinstalldir}/functions
     cp -r ${rundir}/lib/skel/* $HOME
     cp -r ${rundir}/lib/skel/.* $HOME
-    detectvim
-    if [[ $viminstall != null ]] ; then
-        mkdir -p ${HOME}/.vim/colors
-        cp $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
-        cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
-    fi
-    if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
-        echo -e $bashrc_append >> $HOME/.bashrc && center "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
-    fi
-    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser - && center "QuickInfo cron task created." || warn "QuickInfo cron task creation failed. Check ${lbl}crontab -e${dfl} for errors"
-    mkdir -p $HOME/.quickinfo
-    bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
-    clear
     check-deps
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
         echo -e "$bins_missing"
         center "After this installer completes, run:"
-        echo -en "\n${lbl}sudo apt install -y $binsmissing\n"
+        echo -en "\n${lbl}sudo apt install -y $binsmissing\n${dfl}"
         center "Press 'Enter' key when ready to proceed"
         read proceed
     fi
-    boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes"
+    detectvim
+    if [[ $viminstall != null ]] ; then
+        mkdir -p ${HOME}/.vim/colors
+        cp $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
+        cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
+    fi
+    if [[ $(cat ${HOME}/.bashrc | grep -c prbl) = 0 ]] ; then
+        echo -e $bashrc_append >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
+    fi
+    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser - && boxborder "QuickInfo cron task created." || warn "QuickInfo cron task creation failed. Check ${lbl}crontab -e${dfl} for errors"
+    mkdir -p $HOME/.quickinfo
+    if [[ "$bins_missing" == "false" ]] ; then
+        bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
+    fi
+    clear
+    boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
     success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
 }
 
