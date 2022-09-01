@@ -19,7 +19,7 @@ globalinstalldir="/usr/share/prbl"
 
 read -r -d bashrc_append << EOF
 # Pyr0ball's Reductive Bash Language (PRbL) Functions library v$VERSION and greeting page setup
-export prbl-functions="${installdir}/functions"
+export prbl_functions="${installdir}/functions"
 "if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
     if [ -d \"\$HOME/.bashrc.d\" ]; then
