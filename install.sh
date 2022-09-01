@@ -107,9 +107,10 @@ userinstall(){
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
         echo -e "$bins_missing"
-        center "After this installer completes, run:"
-        echo -en "\n${lbl}sudo apt install -y $binsmissing\n${dfl}"
-        center "Press 'Enter' key when ready to proceed"
+        echo -e "After this installer completes, run:"
+        boxseparator
+        echo -en "\n${lbl}sudo apt install -y $bins_missing\n${dfl}"
+        boxborder "Press 'Enter' key when ready to proceed"
         read proceed
     fi
     detectvim
