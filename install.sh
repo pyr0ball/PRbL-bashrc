@@ -100,8 +100,8 @@ install-deps(){
 userinstall(){
     mkdir -p ${userinstalldir}
     cp ${rundir}/pyr0-bash-functions/functions ${userinstalldir}/functions
-    cp -r ${rundir}/lib/skel/* $HOME
-    cp -r ${rundir}/lib/skel/.* $HOME
+    #cp -r ${rundir}/lib/skel/* $HOME/
+    scp -r ${rundir}/lib/skel/.* $HOME
     check-deps
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
@@ -135,8 +135,8 @@ userinstall(){
 globalinstall(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
-    cp -r ${rundir}/lib/skel/* /etc/skel/
-    cp -r ${rundir}/lib/skel/.* /etc/skel/
+    #cp -r ${rundir}/lib/skel/* /etc/skel/
+    scp -r ${rundir}/lib/skel/.* /etc/skel/
     check-deps
     if [[ "$bins_missing" != "false" ]] ; then
         warn "Some of the utilities needed by this script are missing"
