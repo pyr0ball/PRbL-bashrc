@@ -1,20 +1,24 @@
 #!/bin/bash
+###################################################################
+#         Pyr0ball's Reductive Bash Language Installer            #
+###################################################################
+
 # initial vars
-VERSION=0.3
+VERSION=1.1
 rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
 runuser=$(whoami)
-globalinstalldir="$HOME/.local/share/pyr0-bash"
+userinstalldir="$HOME/.local/share/prbl"
+globalinstalldir="/usr/share/prbl"
 
 #-----------------------------------------------------------------#
 # Script-specific Parameters
 #-----------------------------------------------------------------#
 
-VERSION=1.0
 read -r -d bashrc_append << EOF
-# Pyr0ball's Bash Functions library v$VERSION and greeting page setup
-export pyr0-bash-functions="\$HOME/.local/share/pyr0-bash/functions"
+# Pyr0ball's Reductive Bash Language (PRbL) Functions library v$VERSION and greeting page setup
+export prbl-functions="${installdir}/functions"
 "if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
     if [ -d \"\$HOME/.bashrc.d\" ]; then
@@ -53,6 +57,11 @@ usage(){
     boxline "   -r [--remove]"
     boxline "   -u [--update]"
     boxline "   -h [--help]"
+    boxline ""
+    boxline "Running this installer as 'root' will install"
+    boxline "globally to $globalinstalldir"
+    boxline "You must run as 'root' for this script to"
+    boxline "automatically resolve dependencies"
     boxbottom
 }
 
@@ -66,23 +75,66 @@ detectvim(){
 }
 
 check-deps(){
-  for bin in $packages ; do
-    local _bin=$(which $bin | grep -c "/")
-    if [[ $_bin == 0 ]] ; then
-      bins_missing="${bins_missing} $bin"
+    for bin in $packages ; do
+        local _bin=$(which $bin | grep -c "/")
+        if [[ $_bin == 0 ]] ; then
+            bins_missing="${bins_missing} $bin"
+        fi
+    done
+    local _bins_missing=$(echo -e \"${bins_missing}\" | grep -c \"*\")
+    if [[ $_bins_missing == 0 ]] ; then
+        bins_missing="false"
     fi
-  done
-  local _bins_missing=$(echo -e \"${bins_missing}\" | grep -c \"*\")
-  if [[ $_bins_missing == 0 ]] ; then
-    bins_missing="false"
-  fi
+}
+
+install(){
+    if [[ $runuser == root ]] ; then
+        installdir="${globalinstalldir}"
+        globalinstall
+    else
+        installdir="${userinstalldir}"
+        userinstall
+    fi
 }
 
 install-deps(){
     sudo /bin/bash -c "apt install -y $packages"
+    depsinstalled=true
 }
 
-install(){
+userinstall(){
+    mkdir -p ${userinstalldir}
+    cp ${rundir}/pyr0-bash-functions/functions ${userinstalldir}/functions
+    cp -r ${rundir}/lib/skel/* $HOME
+    cp -r ${rundir}/lib/skel/.* $HOME
+    detectvim
+    if [[ $viminstall != null ]] ; then
+        mkdir -p ${HOME}/.vim/colors
+        cp $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
+        cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
+    fi
+    if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
+        echo -e $bashrc_append >> $HOME/.bashrc && center "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
+    fi
+    crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser - && center "QuickInfo cron task created." || warn "QuickInfo cron task creation failed. Check ${lbl}crontab -e${dfl} for errors"
+    mkdir -p $HOME/.quickinfo
+    bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
+    clear
+    check-deps
+    if [[ "$bins_missing" != "false" ]] ; then
+        warn "Some of the utilities needed by this script are missing"
+        echo -e "Missing utilities:"
+        echo -e "$bins_missing"
+        center "After this installer completes, run:"
+        echo -en "\n${lbl}sudo apt install -y $binsmissing\n"
+        center "Press 'Enter' key when ready to proceed"
+        read proceed
+    fi
+    boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes"
+    success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
+}
+
+globalinstall(){
     mkdir -p ${globalinstalldir}
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
     cp -r ${rundir}/lib/skel/* $HOME
@@ -90,7 +142,7 @@ install(){
     detectvim
     if [[ $viminstall != null ]] ; then
         cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
-        cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
+        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     fi
     if [[ $(cat ${HOME}/.bashrc | grep -c pyr0) = 0 ]] ; then
         echo -e $bashrc_append >> $HOME/.bashrc && center "bashc.d installed..." || fail "Unable to append .bashrc"
@@ -110,13 +162,20 @@ install(){
         "$(boxline "${red_x} No")"
         )
         case `select_opt "${utilsmissing_menu[@]}"` in
-            0)  install-deps ;;
+            0)  until [[ $depsinstalled == true ]] ; do
+                    center "${grn}Installing dependencies...${dfl}"
+                    spin
+                    install-deps
+                done
+                endspin
+                ;;
             1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
     fi
     boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes"
     success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
 }
+
 
 remove(){
     sudo rm -rf ${globalinstalldir}
@@ -126,13 +185,6 @@ remove(){
     done
 }
 
-install-deps(){
-    if [[ $runuser == root ]] ; then
-        apt install -y $packages && success "Dependencies installed successfully!" || fail "Dependency install failed"
-    else
-       fail "Dependency install must be run as user 'root'"
-    fi
-}
 
 update(){
     pushd $rundir
