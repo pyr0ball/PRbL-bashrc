@@ -70,10 +70,10 @@ detectvim(){
 }
 
 check-deps(){
-    for bin in $packages ; do
-        local _bin=$(which $bin | grep -c "/")
-        if [[ $_bin == 0 ]] ; then
-            bins_missing="${bins_missing} $bin"
+    for pkg in $packages ; do
+        local _pkg=$(dpkg -l $pkg 2>&1 2>/dev/null ; echo $?)
+        if [[ $_pkg == 1 ]] ; then
+            bins_missing="${bins_missing} $pkg"
         fi
     done
     local _bins_missing=$(echo -e \"${bins_missing}\" | grep -c \"*\")
@@ -199,6 +199,7 @@ globalinstall(){
             fi
             crontab -l -u $selecteduser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $selecteduser -
             mkdir -p /home/${selecteduser}/.quickinfo
+            chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}
             if [[ "$bins_missing" == "false" ]] ; then
                 su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc -c
             fi
@@ -219,6 +220,7 @@ globalinstall(){
 
 
 remove(){
+
     sudo rm -rf ${globalinstalldir}
     for file in $(pushd lib/skel/ ; find ; popd) ; do
         rm $HOME/$file 2>&1 >dev/null
