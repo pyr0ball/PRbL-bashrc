@@ -154,6 +154,7 @@ userinstall(){
 
     # Create the quickinfo cache directory
     mkdir -p $HOME/.quickinfo
+    export prbl_functions="${installdir}/functions"
 
     # If all required dependencies are installed, launch initial cache creation
     if [[ "$bins_missing" == "false" ]] ; then
@@ -170,6 +171,7 @@ globalinstall(){
 
     # Copy functions
     cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
+    export prbl_functions="${globalinstalldir}/functions"
 
     # Check for dependent applications and offer to install
     check-deps
