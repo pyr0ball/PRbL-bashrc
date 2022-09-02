@@ -252,7 +252,6 @@ case $1 in
         ;;
     -u | --update)
         update
-        #sleep $ratelimit
         exit 0
         ;;
     -h | --help)
