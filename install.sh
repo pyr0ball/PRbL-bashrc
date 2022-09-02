@@ -58,7 +58,7 @@ detectvim(){
 
 check-deps(){
     for pkg in $packages ; do
-        local _pkg=$(dpkg -l $pkg 2>&1 2>/dev/null ; echo $?)
+        local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
         if [[ $_pkg == 1 ]] ; then
             bins_missing="${bins_missing} $pkg"
         fi
