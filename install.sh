@@ -162,7 +162,7 @@ userinstall(){
     fi
     #clear
     boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
-    success "${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}"
+    success "\t${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed!${dfl}"
 }
 
 globalinstall(){
