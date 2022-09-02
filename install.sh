@@ -194,7 +194,7 @@ globalinstall(){
         if [[ "${result[idx]}" == "true" ]] ; then
             #cp -r ${rundir}/lib/skel/* /etc/skel/
             scp -r ${rundir}/lib/skel/.* /home/${selecteduser}
-            if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) = 0 ]] ; then
+            if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 echo -e $bashrc_append >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || fail "Unable to append .bashrc"
             fi
             crontab -l -u $selecteduser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $selecteduser -
