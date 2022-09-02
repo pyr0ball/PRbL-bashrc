@@ -18,19 +18,6 @@ globalinstalldir="/usr/share/prbl"
 # Script-specific Parameters
 #-----------------------------------------------------------------#
 
-read -r -d bashrc_append << EOF
-# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions="${installdir}/functions"
-if [ -n \"\$BASH_VERSION\" ]; then
-    # include .bashrc if it exists
-    if [ -d \"\$HOME/.bashrc.d\" ]; then
-        for file in \$HOME/.bashrc.d/*.bashrc ; do
-            source \"\$file\"
-        done
-    fi
-fi
-EOF
-
 # List of dependency packaged to be istalled via apt
 packages="git
 vim
@@ -90,9 +77,33 @@ install-deps(){
 install(){
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
+        bashrc_append="
+# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+export prbl_functions=\"${installdir}/functions\"
+if [ -n \"\$BASH_VERSION\" ]; then
+    # include .bashrc if it exists
+    if [ -d \"\$HOME/.bashrc.d\" ]; then
+        for file in \$HOME/.bashrc.d/*.bashrc ; do
+            source \"\$file\"
+        done
+    fi
+fi
+"
         globalinstall
     else
         installdir="${userinstalldir}"
+        bashrc_append="
+# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+export prbl_functions=\"${installdir}/functions\"
+if [ -n \"\$BASH_VERSION\" ]; then
+    # include .bashrc if it exists
+    if [ -d \"\$HOME/.bashrc.d\" ]; then
+        for file in \$HOME/.bashrc.d/*.bashrc ; do
+            source \"\$file\"
+        done
+    fi
+fi
+"
         userinstall
     fi
 }
@@ -195,7 +206,7 @@ globalinstall(){
             #cp -r ${rundir}/lib/skel/* /etc/skel/
             scp -r ${rundir}/lib/skel/.* /home/${selecteduser}
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
-                su ${selecteduser} -c "echo -e $bashrc_append >> /home/${selecteduser}/.bashrc" && boxborder "bashc.d installed..." || fail "Unable to append .bashrc"
+                echo -e $bashrc_append >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
             crontab -l -u $selecteduser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $selecteduser -
             mkdir -p /home/${selecteduser}/.quickinfo
