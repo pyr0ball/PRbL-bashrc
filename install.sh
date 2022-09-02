@@ -63,7 +63,7 @@ check-deps(){
             bins_missing="${bins_missing} $pkg"
         fi
     done
-    local _bins_missing=$(echo -e \"${bins_missing}\" | grep -c \"*\")
+    local _bins_missing=$(echo $bins_missing | wc -w)
     if [[ $_bins_missing == 0 ]] ; then
         bins_missing="false"
     fi
