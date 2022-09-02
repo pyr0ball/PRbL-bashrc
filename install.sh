@@ -1,11 +1,11 @@
 #!/bin/bash
 ###################################################################
-#         Pyr0ball's Reductive Bash Language Installer            #
+#         Pyr0ball's Reductive Bash Library Installer            #
 ###################################################################
 
 # initial vars
 VERSION=1.1
-scripttitle="Pyr0ball's Reductive Bash Language Installer - v$VERSION"
+scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 rundir=${0%/*}
 source ${rundir}/pyr0-bash-functions/functions
 scriptname=${0##*/}
@@ -19,7 +19,7 @@ globalinstalldir="/usr/share/prbl"
 #-----------------------------------------------------------------#
 
 read -r -d bashrc_append << EOF
-# Pyr0ball's Reductive Bash Language (PRbL) Functions library v$VERSION and greeting page setup
+# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions="${installdir}/functions"
 if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
