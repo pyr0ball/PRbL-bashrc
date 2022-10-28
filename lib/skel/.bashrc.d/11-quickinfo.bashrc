@@ -9,14 +9,7 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-scriptname=${0##*/}
-rundir=$(cd `dirname $0` && pwd)
 source $prbl_functions
-
-# Set to only run on interactive sessions (Disabled as cache
-# generation is non-interactive, so this would cause outdated
-# information to be displayed)
-#[[ "$-" == *i* ]] || exit 0
 
 # Cache File Parameters
 cachefile=quickinfo.cache
@@ -26,15 +19,6 @@ if [ ! -d $cachefile_location ] ; then
 fi
 cache=$(echo "${cachefile_location}/${cachefile}")
 
-### Functions table
-
-################################
-
-warn(){
-	ec=$?
-	[ "${ec}" == "0" ] && ec=1
-	echo "WARNING[code=$ec}: $@"
-}
 
 ################################
 
@@ -130,6 +114,11 @@ while getopts ":cdh" opt
 		shift $((OPTIND - 1))
 
 ################################
+
+# Set to only run on interactive sessions (Disabled as cache
+# generation is non-interactive, so this would cause outdated
+# information to be displayed)
+#[[ "$-" == *i* ]] || fail "non-interactive session"
 
 # Checks if cachefile exists yet, and if not, warns the user
 if [ ! -f $cache ] ; then
@@ -287,7 +276,7 @@ boxline "	System Load: ${load_averages}"
 boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${dfl}"
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	Disk Usage:"
-for i in $(/bin/df -h | grep "sd\|md\|mapper\|nvme" | awk '{print $1}') ; do
+for i in $(/bin/df -h | grep "sd\|md\|mapper\|nvme\|mmcblk\|root" | awk '{print $1}') ; do
 boxline "	`/bin/df -h | grep $i | awk '{print $5}'` $i: `/bin/df -h | grep $i | awk '{print $6}'`"
 done
 boxline ""
