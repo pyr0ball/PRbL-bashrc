@@ -78,8 +78,7 @@ install(){
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
         bashrc_append="
-# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions=\"${installdir}/functions\"
+# Pluggable bashrc config. Add environment modifications to ~/.bashrc.d/ and append with '.bashrc'
 if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
     if [ -d \"\$HOME/.bashrc.d\" ]; then
@@ -89,12 +88,13 @@ if [ -n \"\$BASH_VERSION\" ]; then
     fi
 fi
 "
+        prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+export prbl_functions=\"${installdir}/functions\""
         globalinstall
     else
         installdir="${userinstalldir}"
         bashrc_append="
-# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions=\"${installdir}/functions\"
+# Pluggable bashrc config. Add environment modifications to ~/.bashrc.d/ and append with '.bashrc'
 if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
     if [ -d \"\$HOME/.bashrc.d\" ]; then
@@ -104,6 +104,8 @@ if [ -n \"\$BASH_VERSION\" ]; then
     fi
 fi
 "
+        prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+export prbl_functions=\"${installdir}/functions\""
         userinstall
     fi
 }
@@ -145,6 +147,7 @@ userinstall(){
     # Check for existing bashrc config, append if missing
     if [[ $(cat ${HOME}/.bashrc | grep -c prbl) = 0 ]] ; then
         echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
+        echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
     fi
 
     # Check crontab for quickinfo cron task
