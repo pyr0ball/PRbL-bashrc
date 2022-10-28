@@ -7,7 +7,7 @@
 VERSION=1.1
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 rundir=${0%/*}
-source ${rundir}/pyr0-bash-functions/functions
+source ${rundir}/functions
 scriptname=${0##*/}
 runuser=$(whoami)
 users=($(ls /home/))
@@ -113,7 +113,7 @@ userinstall(){
     mkdir -p ${userinstalldir}
 
     # Copy functions first
-    cp ${rundir}/pyr0-bash-functions/functions ${userinstalldir}/functions
+    cp ${rundir}/PRbL/functions ${userinstalldir}/functions
 
     # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
@@ -170,7 +170,7 @@ globalinstall(){
     mkdir -p ${globalinstalldir}
 
     # Copy functions
-    cp ${rundir}/pyr0-bash-functions/functions ${globalinstalldir}/functions
+    cp ${rundir}/PRbL/functions ${globalinstalldir}/functions
     export prbl_functions="${globalinstalldir}/functions"
 
     # Check for dependent applications and offer to install
