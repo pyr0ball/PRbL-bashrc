@@ -14,7 +14,7 @@ This installer sets up a number of bash-enhancing features:
 
 - Easy access to easy-to-use functions in bash scripting (check out ./PRbL/demo.sh for details)
 - A pluggable environment configuration via ~/.bashrc.d/
-- An informative terminal login slapsh page
+- An informative terminal login splash page
 
 Currently this installer only handles debian/ubuntu-based distros.
 

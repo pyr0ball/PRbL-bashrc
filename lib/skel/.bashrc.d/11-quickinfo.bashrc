@@ -331,3 +331,4 @@ if [ -z "${fsck_needed}" ] || [ -z "${reboot_required}" ] ; then
   boxline "	${fsck_needed}${reboot_required}"
 fi
 boxbottom
+
