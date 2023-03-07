@@ -23,9 +23,60 @@ packages="git
 vim
 lm-sensors
 net-tools
-update-notifier-common
 "
 
+# OS distribution auto-detection
+if type lsb_release >/dev/null 2>&1; then
+  # linuxbase.org
+  OS=$(lsb_release -si)
+  VER=$(lsb_release -sr)
+elif [ -f /etc/debian_version ]; then
+  # Older Debian/Ubuntu/etc.
+  OS=Debian
+  VER=$(cat /etc/debian_version)
+elif [ -f /etc/os-release ]; then
+  # freedesktop.org and systemd
+  . /etc/os-release
+  OS=$NAME
+  VER=$VERSION_ID
+elif [ -f /etc/lsb-release ]; then
+  # For some versions of Debian/Ubuntu without lsb_release command
+  . /etc/lsb-release
+  OS=$DISTRIB_ID
+  VER=$DISTRIB_RELEASE
+elif [ -f /etc/debian_version ]; then
+  # Older Debian/Ubuntu/etc.
+  OS=Debian
+  VER=$(cat /etc/debian_version)
+elif [ -f /etc/SuSe-release ]; then
+  # Older SuSE/etc.
+  ...
+elif [ -f /etc/redhat-release ]; then
+  # Older Red Hat, CentOS, etc.
+  OS=$(cat /etc/redhat-release | awk '{print $1}')
+else
+  # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+  OS=$(uname -s)
+  VER=$(uname -r)
+fi
+
+# Add apt-notifier-common required packages
+if [[$OS_DETECTED == "Debian"]] || [[$OS_DETECTED == "Ubuntu"]]; then
+    packages="$packages
+apt-config-auto-update"
+fi
+
+bashrc_append="
+# Pluggable bashrc config. Add environment modifications to ~/.bashrc.d/ and append with '.bashrc'
+if [ -n \"\$BASH_VERSION\" ]; then
+    # include .bashrc if it exists
+    if [ -d \"\$HOME/.bashrc.d\" ]; then
+        for file in \$HOME/.bashrc.d/*.bashrc ; do
+            source \"\$file\"
+        done
+    fi
+fi
+"
 
 #-----------------------------------------------------------------#
 # Script-specific Funcitons
@@ -59,13 +110,15 @@ detectvim(){
 check-deps(){
     for pkg in $packages ; do
         local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
-        if [[ $_pkg == 1 ]] ; then
+        if [[ $_pkg != 0 ]] ; then
             bins_missing="${bins_missing} $pkg"
         fi
     done
     local _bins_missing=$(echo $bins_missing | wc -w)
     if [[ $_bins_missing == 0 ]] ; then
         bins_missing="false"
+    else
+        return $bins_missing
     fi
 }
 
@@ -77,33 +130,10 @@ install-deps(){
 install(){
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
-        bashrc_append="
-# Pluggable bashrc config. Add environment modifications to ~/.bashrc.d/ and append with '.bashrc'
-if [ -n \"\$BASH_VERSION\" ]; then
-    # include .bashrc if it exists
-    if [ -d \"\$HOME/.bashrc.d\" ]; then
-        for file in \$HOME/.bashrc.d/*.bashrc ; do
-            source \"\$file\"
-        done
-    fi
-fi
-"
         prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions=\"${installdir}/functions\""
-        globalinstall
     else
         installdir="${userinstalldir}"
-        bashrc_append="
-# Pluggable bashrc config. Add environment modifications to ~/.bashrc.d/ and append with '.bashrc'
-if [ -n \"\$BASH_VERSION\" ]; then
-    # include .bashrc if it exists
-    if [ -d \"\$HOME/.bashrc.d\" ]; then
-        for file in \$HOME/.bashrc.d/*.bashrc ; do
-            source \"\$file\"
-        done
-    fi
-fi
-"
         prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions=\"${installdir}/functions\""
         userinstall
@@ -111,6 +141,7 @@ export prbl_functions=\"${installdir}/functions\""
 }
 
 userinstall(){
+
     # Create install directory under user's home directory
     mkdir -p ${userinstalldir}
 
@@ -145,7 +176,7 @@ userinstall(){
     fi
 
     # Check for existing bashrc config, append if missing
-    if [[ $(cat ${HOME}/.bashrc | grep -c prbl) = 0 ]] ; then
+    if [[ $(cat ${HOME}/.bashrc | grep -c 'bashrc.d') == 0 ]] ; then
         echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
         echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
     fi
@@ -164,6 +195,12 @@ userinstall(){
         bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
     fi
     #clear
+
+    # Download and install any other extras
+    if [ -f "${rundir_absolute}/extra.installs"] ; then
+        /bin/bash ${rundir_absolute}/extra.installs
+    fi
+
     boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
     success "\t${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed!${dfl}"
 }
@@ -230,14 +267,25 @@ globalinstall(){
     if [ ! -z $(which sensors-detect) ] ; then
         sensors-detect --auto
     fi
+
+    # Download and install any other extras
+    if [ -f "${rundir_absolute}/extra.installs"] ; then
+        /bin/bash ${rundir_absolute}/extra.installs
+    fi
     #clear
     success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
 }
 
 
 remove(){
-
-    sudo rm -rf ${globalinstalldir}
+    if [[ $runuser == root ]] ; then
+        if [ -d $globalinstalldir ] ; then
+            sudo rm -rf ${globalinstalldir}
+        fi
+    fi
+    if [ -d $userinstalldir ] ; then
+        rm -rf $userinstalldir
+    fi
     for file in $(pushd lib/skel/ ; find ; popd) ; do
         rm $HOME/$file 2>&1 >dev/null
         rmdir $HOME/$file 2>&1 >dev/null
