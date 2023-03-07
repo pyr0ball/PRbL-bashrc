@@ -10,6 +10,12 @@
 ###############################################################
 
 source $prbl_functions
+prbl_functons_req_ver=1.1.3
+
+if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
+  warn "PRbL functions installed are lower than recommended ($prbl_functons_req_ver)"
+  warn "Some features may not work as expected"
+fi
 
 # Cache File Parameters
 cachefile=quickinfo.cache
@@ -256,15 +262,32 @@ fi
 
 ################################
 
+# Network display and filtering
+
+filtered_adapters="lo"
+declare -a adapters=()
+declare -a ips=()
+declare -a macs=()
+for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
+  adapters+=($device)
+  _ip=$(/sbin/ifconfig $device 2> /dev/null | grep broadcast | awk '{print $2}' | cut -f 2 -d ":" |cut -f 1 -d " ")
+  if valid-ip $_ip ; then
+    ips=(${ips[@]} "$_ip")
+  else
+    ips=(${ips[@]} "${red}disconnected${dfl}")
+  fi
+  macs+=("$(/sbin/ifconfig $device | grep ether | awk '{print $2}')")
+done
+
 # Begin echo out of formatted table with agregated information 
 
 boxtop
 boxline ""
 boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
-boxline "${bld}${unl}Network${dfl}"
-for i in $(ls /sys/class/net/ | grep -v "lo") ; do 
-	boxline "	$i: ${cyn}$(/sbin/ifconfig $i 2> /dev/null | grep broadcast | awk '{print $2}' | cut -f 2 -d ":" |cut -f 1 -d " " )${dfl}	|  ${blu}$(/sbin/ifconfig $i | grep ether | awk '{print $2}')${dfl}"
+# Echo out network arrays
+for((i=0; i<"${#adapters[@]}"; i++ )); do
+	boxline "	${adapters[$i]}:  ${cyn}${ips[$i]}${dfl}	|  ${blu}${macs[$i]}${dfl}"
 done
 boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
 boxline ""
@@ -280,7 +303,7 @@ for i in $(/bin/df -h | grep "sd\|md\|mapper\|nvme\|mmcblk\|root" | awk '{print 
 boxline "	`/bin/df -h | grep $i | awk '{print $5}'` $i: `/bin/df -h | grep $i | awk '{print $6}'`"
 done
 boxline ""
-if [[ $(echo ${packages} | grep -c ^0\ updates) != 1 ]] || [ -z "${supdates}"] || [ -z "${release_upgrade}" ] ; then
+if [[ $(echo ${packages} | grep -c ^0\ updates) != 1 ]] || [ -z "${supdates}" ] || [ -z "${release_upgrade}" ] ; then
 #if [[ $(echo ${packages} | grep -c ^0\ updates) == 1 ]] ; then
   need_updates=false
 else
