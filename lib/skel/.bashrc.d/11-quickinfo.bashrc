@@ -9,6 +9,19 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
+# Preferences:
+
+# Network Adapter Preferences
+display_disconnected=true
+# separate adapter names with '\|' ex. "lo\|tun0"
+filtered_adapters="lo"
+
+# Disks
+# separate disk types with '\|' ex. "sd\|nvme"
+allowed_disk_prefixes="sd\|md\|mapper\|nvme\|mmcblk\|root"
+disallowed_disks="boot"
+
+# source PRbL functions
 source $prbl_functions
 prbl_functons_req_ver=1.1.3
 
@@ -264,19 +277,18 @@ fi
 
 # Network display and filtering
 
-filtered_adapters="lo"
 declare -a adapters=()
 declare -a ips=()
 declare -a macs=()
 for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
   adapters+=($device)
-  _ip=$(/sbin/ifconfig $device 2> /dev/null | grep broadcast | awk '{print $2}' | cut -f 2 -d ":" |cut -f 1 -d " ")
+  _ip=$(ip -f inet -o addr show $device | cut -d\  -f 7 | cut -d/ -f 1 | head -n 1)
   if valid-ip $_ip ; then
     ips=(${ips[@]} "$_ip")
   else
     ips=(${ips[@]} "${red}disconnected${dfl}")
   fi
-  macs+=("$(/sbin/ifconfig $device | grep ether | awk '{print $2}')")
+  macs=(${macs[@]} "$(cat /sys/class/net/${device}/address)")
 done
 
 # Begin echo out of formatted table with agregated information 
@@ -299,7 +311,7 @@ boxline "	System Load: ${load_averages}"
 boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${dfl}"
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	Disk Usage:"
-for i in $(/bin/df -h | grep "sd\|md\|mapper\|nvme\|mmcblk\|root" | awk '{print $1}') ; do
+for i in $(/bin/df -h | grep "$allowed_disk_prefixes" | grep -v "$disallowed_disks" | awk '{print $1}') ; do
 boxline "	`/bin/df -h | grep $i | awk '{print $5}'` $i: `/bin/df -h | grep $i | awk '{print $6}'`"
 done
 boxline ""
