@@ -61,7 +61,7 @@ else
 fi
 
 # Add apt-notifier-common required packages
-if [[$OS_DETECTED == "Debian"]] || [[$OS_DETECTED == "Ubuntu"]]; then
+if [[ $OS_DETECTED == "Debian" ]] || [[ $OS_DETECTED == "Ubuntu" ]]; then
     packages="$packages
 apt-config-auto-update"
 fi
@@ -197,7 +197,7 @@ userinstall(){
     #clear
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extra.installs"] ; then
+    if [ -f "${rundir_absolute}/extra.installs" ] ; then
         /bin/bash ${rundir_absolute}/extra.installs
     fi
 
