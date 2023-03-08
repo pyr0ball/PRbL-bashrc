@@ -12,7 +12,7 @@
 # Preferences:
 
 # Network Adapter Preferences
-display_disconnected=true
+show_disconnected=true
 # separate adapter names with '\|' ex. "lo\|tun0"
 filtered_adapters="lo"
 
@@ -28,6 +28,11 @@ prbl_functons_req_ver=1.1.3
 if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
   warn "PRbL functions installed are lower than recommended ($prbl_functons_req_ver)"
   warn "Some features may not work as expected"
+else
+  if ! vercomp 1 1 ; then
+    warn "PRbL functions library is older than 1.1.3, please update!"
+    warn "Some features may not work as expected"
+  fi
 fi
 
 # Cache File Parameters
@@ -279,13 +284,16 @@ fi
 declare -a adapters=()
 declare -a ips=()
 declare -a macs=()
+declare -a ifups=()
 for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
   adapters+=($device)
   _ip=$(ip -f inet -o addr show $device | cut -d\  -f 7 | cut -d/ -f 1 | head -n 1)
   if valid-ip $_ip ; then
     ips=(${ips[@]} "$_ip")
+    ifups=(${ifups[@]} "up")
   else
     ips=(${ips[@]} "${red}disconnected${dfl}")
+    ifups=(${ifups[@]} "down")
   fi
   macs=(${macs[@]} "$(cat /sys/class/net/${device}/address)")
 done
@@ -325,7 +333,13 @@ boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
 # Echo out network arrays
 for((i=0; i<"${#adapters[@]}"; i++ )); do
-	boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+  if [[ $show_disconnected == false ]] ; then
+    if [[ ${ifups[$i]} == up ]] ; then
+	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+    fi
+  else
+    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+  fi
 done
 boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
 boxline ""
@@ -337,7 +351,7 @@ boxline "	System Load: ${load_averages}"
 boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${dfl}"
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	${unl}Disk Info:${dfl}"
-boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Logical)${dfl}"
+boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
 for((i=0; i<"${#logicals[@]}"; i++ )); do
   boxline "\t$(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
