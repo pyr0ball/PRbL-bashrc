@@ -291,7 +291,22 @@ for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
   macs=(${macs[@]} "$(cat /sys/class/net/${device}/address)")
 done
 
-# Begin echo out of formatted table with agregated information 
+################################
+
+# Disk array setup
+declare -a logicals=()
+declare -a mounts=()
+declare -a usages=()
+declare -a freespaces=()
+diskinfo=$(/bin/df -h | grep "$allowed_disk_prefixes" | grep -v "$disallowed_disks")
+logicals=($(cut -d ' ' -f1 <<< "${diskinfo}"))
+mounts=($(awk '{print $6}' <<< "${diskinfo}"))
+usages=($(awk '{print $5}' <<< "${diskinfo}"))
+freespaces=($(awk '{print $4}' <<< "${diskinfo}"))
+
+################################
+
+# Begin echo out of formatted table with aggregated information 
 
 boxtop
 boxline ""
@@ -299,7 +314,7 @@ boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
 # Echo out network arrays
 for((i=0; i<"${#adapters[@]}"; i++ )); do
-	boxline "	${adapters[$i]}:  ${cyn}${ips[$i]}${dfl}	|  ${blu}${macs[$i]}${dfl}"
+	boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
 done
 boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
 boxline ""
@@ -310,9 +325,10 @@ boxline "${bld}${unl}System Status${dfl}"
 boxline "	System Load: ${load_averages}"
 boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${dfl}"
 boxline "	Memory used/total: ${mem_usage}"
-boxline "	Disk Usage:"
-for i in $(/bin/df -h | grep "$allowed_disk_prefixes" | grep -v "$disallowed_disks" | awk '{print $1}') ; do
-boxline "	`/bin/df -h | grep $i | awk '{print $5}'` $i: `/bin/df -h | grep $i | awk '{print $6}'`"
+boxline "	${unl}Disk Info:${dfl}"
+boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Logical)${dfl}"
+for((i=0; i<"${#logicals[@]}"; i++ )); do
+  boxline "\t$(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
 if [[ $(echo ${packages} | grep -c ^0\ updates) != 1 ]] || [ -z "${supdates}" ] || [ -z "${release_upgrade}" ] ; then
