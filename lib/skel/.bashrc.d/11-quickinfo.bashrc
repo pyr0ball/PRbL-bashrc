@@ -42,44 +42,43 @@ cache=$(echo "${cachefile_location}/${cachefile}")
 ################################
 
 quickinfo-cache (){
-#check for updates
-packages_cache=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
-supdates_cache=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates")
-# Uses a wide variety of methods to check which distro this is run on
-if type lsb_release >/dev/null 2>&1; then
-  # linuxbase.org
-  OS=$(lsb_release -si)
-  VER=$(lsb_release -sr)
-elif [ -f /etc/debian_version ]; then
-  # Older Debian/Ubuntu/etc.
-  OS=Debian
-  VER=$(cat /etc/debian_version)
-elif [ -f /etc/os-release ]; then
-  # freedesktop.org and systemd
-  . /etc/os-release
-  OS=$NAME
-  VER=$VERSION_ID
-elif [ -f /etc/lsb-release ]; then
-  # For some versions of Debian/Ubuntu without lsb_release command
-  . /etc/lsb-release
-  OS=$DISTRIB_ID
-  VER=$DISTRIB_RELEASE
-elif [ -f /etc/debian_version ]; then
-  # Older Debian/Ubuntu/etc.
-  OS=Debian
-  VER=$(cat /etc/debian_version)
-elif [ -f /etc/SuSe-release ]; then
-  # Older SuSE/etc.
-  ...
-elif [ -f /etc/redhat-release ]; then
-  # Older Red Hat, CentOS, etc.
-  ...
-else
-  # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-  OS=$(uname -s)
-  VER=$(uname -r)
-fi
-
+  # Uses a wide variety of methods to check which distro this is run on
+  if type lsb_release >/dev/null 2>&1; then
+    # linuxbase.org
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
+  elif [ -f /etc/debian_version ]; then
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
+  elif [ -f /etc/os-release ]; then
+    # freedesktop.org and systemd
+    . /etc/os-release
+    OS=$NAME
+    VER=$VERSION_ID
+  elif [ -f /etc/lsb-release ]; then
+    # For some versions of Debian/Ubuntu without lsb_release command
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
+  elif [ -f /etc/debian_version ]; then
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
+  elif [ -f /etc/SuSe-release ]; then
+    # Older SuSE/etc.
+    ...
+  elif [ -f /etc/redhat-release ]; then
+    # Older Red Hat, CentOS, etc.
+    ...
+  else
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
+  fi
+  #check for updates
+  packages_cache=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
+  supdates_cache=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates")
   # Echo the parameters out to the cache file with a "key" marker
   # at the beginning of the line. This key is used to pull the specific
   # line needed for each parameter using grep, then cut out of the
@@ -253,7 +252,7 @@ fi
 
 # Check for release upgrade
 if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
-    release_upgrade=`exec /usr/lib/ubuntu-release-upgrader/release-upgrade-motd`
+    release_upgrade=$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)
 fi
 if [ "$(lsb_release -sd | cut -d' ' -f4)" = "(development" ]; then
     unset release_upgrade
@@ -269,8 +268,8 @@ fi
 ################################
 
 # Check if reboot required by updates
-if [ -x /usr/lib/update-notifier/update-motd-reboot-required ]; then
-    reboot_required=`exec /usr/lib/update-notifier/update-motd-reboot-required`
+if [ -f /var/run/reboot-required ]; then
+    reboot_required=$(cat /var/run/reboot-required)
 fi
 
 ################################
@@ -305,6 +304,18 @@ usages=($(awk '{print $5}' <<< "${diskinfo}"))
 freespaces=($(awk '{print $4}' <<< "${diskinfo}"))
 
 ################################
+#check for updates
+packages=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
+supdates=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates" | cut -d '.' -f1)
+packages=${packages%%\.*}
+supdates=${supdates%%\.*}
+# Check for updates
+if [[ $(echo ${packages} | grep -c updates) != 1 ]] || [ -z "${supdates}" ] || [ -z "${release_upgrade}" ] ; then
+#if [[ $(echo ${packages} | grep -c ^0\ updates) == 1 ]] ; then
+  need_updates=false
+else
+  need_updates=true
+fi
 
 # Begin echo out of formatted table with aggregated information 
 
@@ -331,12 +342,6 @@ for((i=0; i<"${#logicals[@]}"; i++ )); do
   boxline "\t$(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
-if [[ $(echo ${packages} | grep -c ^0\ updates) != 1 ]] || [ -z "${supdates}" ] || [ -z "${release_upgrade}" ] ; then
-#if [[ $(echo ${packages} | grep -c ^0\ updates) == 1 ]] ; then
-  need_updates=false
-else
-  need_updates=true
-fi
 if [[ "$need_updates" == "true" ]] ; then
   boxline "${bld}${unl}Updates${dfl}"
   boxline "	${packages}"
