@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=1.1
+VERSION=2.0.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 rundir=${0%/*}
 source ${rundir}/functions
@@ -181,10 +181,6 @@ userinstall(){
         echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
     fi
 
-    # Check crontab for quickinfo cron task
-    if [[ -z $(crontab -l | grep quickinfo) ]] ; then
-        crontab -l -u $runuser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $runuser - && boxborder "QuickInfo cron task created." || warn "QuickInfo cron task creation failed. Check ${lbl}crontab -e${dfl} for errors"
-    fi
 
     # Create the quickinfo cache directory
     mkdir -p $HOME/.quickinfo
@@ -250,11 +246,9 @@ globalinstall(){
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
-            crontab -l -u $selecteduser | cat - ${rundir}/lib/quickinfo.cron | crontab -u $selecteduser -
-            mkdir -p /home/${selecteduser}/.quickinfo
             chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}
             if [[ "$bins_missing" == "false" ]] ; then
-                su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc -c
+                su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc
             fi
         fi
     done

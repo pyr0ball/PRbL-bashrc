@@ -9,22 +9,57 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-# Preferences:
-
-# Network Adapter Preferences
-show_disconnected=true
-# separate adapter names with '\|' ex. "lo\|tun0"
-filtered_adapters="lo"
-
-# Disks
-# separate disk types with '\|' ex. "sd\|nvme"
-allowed_disk_prefixes="sd\|md\|mapper\|nvme\|mmcblk\|root"
-disallowed_disks="boot"
-
-# source PRbL functions
-source $prbl_functions
+quickinfo_version=2.0.0
 prbl_functons_req_ver=1.1.3
 
+# Uses a wide variety of methods to check which distro this is run on
+# TODO: Add alternative handling for other environments
+if type lsb_release >/dev/null 2>&1; then
+  # linuxbase.org
+  OS=$(lsb_release -si)
+  VER=$(lsb_release -sr)
+elif [ -f /etc/debian_version ]; then
+  # Older Debian/Ubuntu/etc.
+  OS=Debian
+  VER=$(cat /etc/debian_version)
+elif [ -f /etc/os-release ]; then
+  # freedesktop.org and systemd
+  . /etc/os-release
+  OS=$NAME
+  VER=$VERSION_ID
+elif [ -f /etc/lsb-release ]; then
+  # For some versions of Debian/Ubuntu without lsb_release command
+  . /etc/lsb-release
+  OS=$DISTRIB_ID
+  VER=$DISTRIB_RELEASE
+elif [ -f /etc/debian_version ]; then
+  # Older Debian/Ubuntu/etc.
+  OS=Debian
+  VER=$(cat /etc/debian_version)
+elif [ -f /etc/SuSe-release ]; then
+  # Older SuSE/etc.
+  ...
+elif [ -f /etc/redhat-release ]; then
+  # Older Red Hat, CentOS, etc.
+  ...
+else
+  # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+  OS=$(uname -s)
+  VER=$(uname -r)
+fi
+
+# source PRbL functions
+if [ ! -z $prbl_functions ] ; then
+  source $prbl_functions
+else
+  echo -e "PRbL functions not defined. Check ~/.bashrc"
+fi
+
+settinsfile=$(echo "$rundir_abolute/${0##*/}" | cut -d '\.' -f1)
+settinsfile="$settingfule.settings"
+source $settingsfile
+
+# check PRbL functions version
 if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
   warn "PRbL functions installed are lower than recommended ($prbl_functons_req_ver)"
   warn "Some features may not work as expected"
@@ -34,67 +69,6 @@ else
     warn "Some features may not work as expected"
   fi
 fi
-
-# Cache File Parameters
-cachefile=quickinfo.cache
-cachefile_location=$HOME/.quickinfo
-if [ ! -d $cachefile_location ] ; then
-  mkdir -p $cachefile_location
-fi
-cache=$(echo "${cachefile_location}/${cachefile}")
-
-
-################################
-
-quickinfo-cache (){
-  # Uses a wide variety of methods to check which distro this is run on
-  if type lsb_release >/dev/null 2>&1; then
-    # linuxbase.org
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
-  elif [ -f /etc/debian_version ]; then
-    # Older Debian/Ubuntu/etc.
-    OS=Debian
-    VER=$(cat /etc/debian_version)
-  elif [ -f /etc/os-release ]; then
-    # freedesktop.org and systemd
-    . /etc/os-release
-    OS=$NAME
-    VER=$VERSION_ID
-  elif [ -f /etc/lsb-release ]; then
-    # For some versions of Debian/Ubuntu without lsb_release command
-    . /etc/lsb-release
-    OS=$DISTRIB_ID
-    VER=$DISTRIB_RELEASE
-  elif [ -f /etc/debian_version ]; then
-    # Older Debian/Ubuntu/etc.
-    OS=Debian
-    VER=$(cat /etc/debian_version)
-  elif [ -f /etc/SuSe-release ]; then
-    # Older SuSE/etc.
-    ...
-  elif [ -f /etc/redhat-release ]; then
-    # Older Red Hat, CentOS, etc.
-    ...
-  else
-    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-    OS=$(uname -s)
-    VER=$(uname -r)
-  fi
-  #check for updates
-  packages_cache=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
-  supdates_cache=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates")
-  # Echo the parameters out to the cache file with a "key" marker
-  # at the beginning of the line. This key is used to pull the specific
-  # line needed for each parameter using grep, then cut out of the
-  # final echo. Please do not add or remove white space to the beginning of
-  # the lines if this is modified in future.
-  echo "
-  OS${OS}
-  VER${VER}
-  CACHEPACK${packages_cache}
-  CACHESUPD${supdates_cache}" > $cache || fail
-}
 
 ################################
 
@@ -143,22 +117,11 @@ while getopts ":cdh" opt
 # information to be displayed)
 #[[ "$-" == *i* ]] || fail "non-interactive session"
 
-# Checks if cachefile exists yet, and if not, warns the user
-if [ ! -f $cache ] ; then
-	cachemissing=$(echo "Quickinfo cache file is inaccessible. some information may be missing")
-fi
-
-### All curl functions have been migrated to quickinfo-cache function
-
 ################################
 
 # Global parameters pulled from cache file
-  packages=$(cat ${cache} | grep CACHEPACK | cut -c 12- )
-  supdates=$(cat ${cache} | grep CACHESUPD | cut -c 12- )
   location=$(uname -a | awk '{print $2}')
   image_version=$(uname -r)
-  OS=$(cat ${cache} | grep OS | cut -c 5- )
-  VER=$(cat ${cache} | grep VER | cut -c 6- )
   software_version=$(echo $OS $VER)
 # Checks if variables are empty (due to webapp being down on last
 # cache run or other possible reasons) and fills the variables
@@ -183,14 +146,11 @@ if [ -z "$cxps_serial" ]
 fi
 if [ "$any_missing" == "true" ]
 	then
-		vars_missing=$(echo "Something went wrong gathering information. Check WebApp")
+		vars_missing=$(echo "Something went wrong gathering information")
 fi
 
 # Gets public IP address using opendns
 wan_ip=$(wget -qO- http://ipecho.net/plain | xargs echo)
-
-# Global parameters using methods that do not require WebApp
-### These functions run each time the script is run, regardless of caching option
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')

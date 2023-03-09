@@ -1,0 +1,13 @@
+# Network Adapter Preferences
+
+# set false to hide network adapters without valid IP's
+show_disconnected=true
+
+# Ignored network adapter names (regex match)
+# separate adapter names with '\|' ex. "lo\|tun0"
+filtered_adapters="lo"
+
+# Disks
+# separate disk types with '\|' ex. "sd\|nvme"
+allowed_disk_prefixes="sd\|md\|mapper\|nvme\|mmcblk\|root"
+disallowed_disks="boot"
