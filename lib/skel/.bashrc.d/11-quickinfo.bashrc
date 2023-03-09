@@ -9,7 +9,7 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-quickinfo_version=2.0.1
+quickinfo_version=2.0.2
 prbl_functons_req_ver=1.1.3
 
 # Uses a wide variety of methods to check which distro this is run on
@@ -114,8 +114,7 @@ while getopts ":cdh" opt
   location=$(uname -a | awk '{print $2}')
   image_version=$(uname -r)
   software_version=$(echo $OS $VER)
-# Checks if variables are empty (due to webapp being down on last
-# cache run or other possible reasons) and fills the variables
+# Checks if variables are empty and fills the variables
 # with generic warning
 
 empty_var="MISSING"
@@ -123,16 +122,6 @@ empty_var="MISSING"
 if [ -z "$location" ]
 	then
 		location=$empty_var
-		any_missing=true
-fi
-if [ -z "$router_version" ]
-	then
-		router_version=$empty_var
-		any_missing=true
-fi
-if [ -z "$cxps_serial" ]
-	then
-		cxps_serial=$empty_var
 		any_missing=true
 fi
 if [ "$any_missing" == "true" ]
@@ -318,4 +307,3 @@ if [ -z "${fsck_needed}" ] || [ -z "${reboot_required}" ] ; then
   boxline "	${fsck_needed}${reboot_required}"
 fi
 boxbottom
-
