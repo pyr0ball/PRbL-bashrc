@@ -55,10 +55,10 @@ else
   echo -e "PRbL functions not defined. Check ~/.bashrc"
 fi
 
+# Locate and import settings (shares same name with script apart from file extension)
 scriptname="${0##*/}"
 rundir_absolute=$(cd `dirname $0` && pwd)
 settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
-
 source $settingsfile
 
 # check PRbL functions version
@@ -78,14 +78,10 @@ fi
 # running this script with an invalid argument
 
 read -r -d '' usage << EOF
-$scriptname [-h] [-c] [-d] -- Displays information relevent to the IDSS system upon login
+$scriptname [-h] -- Displays information relevent to the system upon login
 
 Usage:
     -h  show this help text
-    -c  Pulls new information requiring more time, then stores
-        it to the cache file before running
-    -d  Run using information stored in ${cache}
-
 EOF
 
 ################################
@@ -97,10 +93,6 @@ while getopts ":cdh" opt
 		case ${opt} in
 			h)	echo "$usage"
 				exit
-				;;
-			c)	quickinfo-cache
-				;;
-			d)	
 				;;
 			:)	
 				;;
@@ -114,10 +106,7 @@ while getopts ":cdh" opt
 
 ################################
 
-# Set to only run on interactive sessions (Disabled as cache
-# generation is non-interactive, so this would cause outdated
-# information to be displayed)
-#[[ "$-" == *i* ]] || fail "non-interactive session"
+[[ "$-" == *i* ]] || fail "non-interactive session"
 
 ################################
 
