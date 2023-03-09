@@ -57,7 +57,8 @@ fi
 
 # Locate and import settings (shares same name with script apart from file extension)
 scriptname="${0##*/}"
-rundir_absolute=$(cd `dirname $0` && pwd)
+rundir="${0%/*}"
+rundir_absolute=$(cd $rundir && pwd)
 settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
 source $settingsfile
 
@@ -106,8 +107,9 @@ while getopts ":cdh" opt
 
 ################################
 
-[[ "$-" == *i* ]] || fail "non-interactive session"
-
+#if [[ $interactive_only == true ]] ; then
+#  [[ "$-" == *i* ]] || fail "non-interactive session"
+#fi
 ################################
 
 # Global parameters pulled from cache file
@@ -131,7 +133,9 @@ fi
 
 # Gets public IP address using opendns
 # TODO: optimize this to run after time delay using timestamp in settings
-wan_ip=$(wget -qO- http://ipecho.net/plain | xargs echo)
+#spinstart &
+  wan_ip=$(wget -qO- http://ipecho.net/plain | xargs echo)
+#spinstop
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')

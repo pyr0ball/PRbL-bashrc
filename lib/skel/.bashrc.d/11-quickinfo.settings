@@ -1,3 +1,8 @@
+# quickinfo bashrc Preferences
+
+# Disable run on non-interactive sessions (set true to disable)
+interactive_only=false
+
 # Network Adapter Preferences
 
 # set false to hide network adapters without valid IP's

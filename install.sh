@@ -187,9 +187,9 @@ userinstall(){
     export prbl_functions="${installdir}/functions"
 
     # If all required dependencies are installed, launch initial cache creation
-    if [[ "$bins_missing" == "false" ]] ; then
-        bash $HOME/.bashrc.d/11-quickinfo.bashrc -c
-    fi
+    #if [[ "$bins_missing" == "false" ]] ; then
+    #    bash $HOME/.bashrc.d/11-quickinfo.bashrc
+    #fi
     #clear
 
     # Download and install any other extras
