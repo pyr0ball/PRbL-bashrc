@@ -3,7 +3,7 @@
 ###############################################################
 # MOTD/Login Quick Information script                         #
 # This script pulls information from a variety of sources     #
-# in the a linux system, and agregates it into a small table  #
+# in the a linux system, and aggregates it into a small table #
 # that is displayed upon terminal login to the system.        #
 #                                                             #
 #           Written by Alan "pyr0ball" Weinstock              #
@@ -274,7 +274,7 @@ boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
 # Echo out network arrays
 for((i=0; i<"${#adapters[@]}"; i++ )); do
-  if [[ $show_disconnected == false ]] ; then
+  if [[ $show_disconnected != true ]] ; then
     if [[ ${ifups[$i]} == up ]] ; then
 	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
     fi
