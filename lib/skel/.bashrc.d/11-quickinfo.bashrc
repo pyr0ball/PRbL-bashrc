@@ -9,7 +9,7 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-quickinfo_version=2.0.0
+quickinfo_version=2.0.1
 prbl_functons_req_ver=1.1.3
 
 # Uses a wide variety of methods to check which distro this is run on
@@ -55,8 +55,10 @@ else
   echo -e "PRbL functions not defined. Check ~/.bashrc"
 fi
 
-settinsfile=$(echo "$rundir_abolute/${0##*/}" | cut -d '\.' -f1)
-settinsfile="$settingfule.settings"
+scriptname="${0##*/}"
+rundir_absolute=$(cd `dirname $0` && pwd)
+settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
+
 source $settingsfile
 
 # check PRbL functions version
@@ -150,6 +152,7 @@ if [ "$any_missing" == "true" ]
 fi
 
 # Gets public IP address using opendns
+# TODO: optimize this to run after time delay using timestamp in settings
 wan_ip=$(wget -qO- http://ipecho.net/plain | xargs echo)
 
 # Checks memory usage
@@ -219,7 +222,7 @@ fi
 if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
     release_upgrade=$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)
 fi
-if [ "$(lsb_release -sd | cut -d' ' -f4)" = "(development" ]; then
+if [ "$(lsb_release -sd | cut -d ' ' -f4)" = "(development" ]; then
     unset release_upgrade
 fi
 
