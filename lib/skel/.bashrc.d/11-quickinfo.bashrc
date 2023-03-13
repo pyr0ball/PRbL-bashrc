@@ -9,7 +9,7 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-quickinfo_version=2.0.2
+quickinfo_version=2.0.3
 prbl_functons_req_ver=1.1.3
 
 # Uses a wide variety of methods to check which distro this is run on
@@ -58,8 +58,14 @@ fi
 # Locate and import settings (shares same name with script apart from file extension)
 scriptname="${0##*/}"
 rundir="${0%/*}"
-rundir_absolute=$(cd $rundir && pwd)
-settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
+# If running on login as a bashrc, the above variables will not give this script's data
+# Failover hardcoded settings location for now
+if ! [[ $scriptname =~ "-bash" ]] ; then
+  rundir_absolute=$(cd $rundir && pwd)
+  settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
+else
+  settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
+fi
 source $settingsfile
 
 # check PRbL functions version
