@@ -48,25 +48,32 @@ else
   VER=$(uname -r)
 fi
 
-# source PRbL functions
-if [ ! -z $prbl_functions ] ; then
-  source $prbl_functions
-else
-  echo -e "PRbL functions not defined. Check ~/.bashrc"
-fi
-
 # Locate and import settings (shares same name with script apart from file extension)
 scriptname="${0##*/}"
 rundir="${0%/*}"
 # If running on login as a bashrc, the above variables will not give this script's data
-# Failover hardcoded settings location for now
+# Failover hardcoded settings location for now if running from login environment
 if ! [[ $scriptname =~ "-bash" ]] ; then
-  rundir_absolute=$(cd $rundir && pwd)
+  #rundir_absolute=$(cd $rundir && pwd)
+  rundir_absolute=$(pushd $rundir && pwd && popd)
   settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
 else
   settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
 fi
 source $settingsfile
+
+# source PRbL functions
+if [ ! -z $prbl_functions ] ; then
+  source $prbl_functions
+else
+  # Failover if global variable is not defined. Checks for 'functions' in same location
+  echo -e "PRbL functions not defined. Check ~/.bashrc"
+  if [ -f "$rundir/functions" ] ; then
+    source $rundir/functions
+  else
+    echo -e "local functions file also missing. Some visual elements will be missing"
+  fi
+fi
 
 # check PRbL functions version
 if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
@@ -95,7 +102,7 @@ EOF
 
 # Options parser
 
-while getopts ":cdh" opt
+while getopts ":h" opt
 	do
 		case ${opt} in
 			h)	echo "$usage"
@@ -113,6 +120,11 @@ while getopts ":cdh" opt
 
 ################################
 
+# Uncomment this section to disable running this in non-interactive sessions
+# For example, on automated logins for a git process, the entire output of
+# this script will be written to logs. Disabling non-interactive sessions
+# will prevent this script from clogging the logging, but it also can cause
+# unexpected exits if improperly deployed (immediate exit on ssh login)
 #if [[ $interactive_only == true ]] ; then
 #  [[ "$-" == *i* ]] || fail "non-interactive session"
 #fi
@@ -139,9 +151,9 @@ fi
 
 # Gets public IP address using opendns
 # TODO: optimize this to run after time delay using timestamp in settings
-#spinstart &
-  wan_ip=$(wget -qO- http://ipecho.net/plain | xargs echo)
-#spinstop
+set_spinner spinner19
+#spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
+wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo )
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
