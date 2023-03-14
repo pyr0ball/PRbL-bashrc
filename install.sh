@@ -22,7 +22,7 @@ globalinstalldir="/usr/share/prbl"
 packages="git
 vim
 lm-sensors
-net-tools
+curl
 "
 
 # OS distribution auto-detection
@@ -123,7 +123,8 @@ check-deps(){
 }
 
 install-deps(){
-    sudo /bin/bash -c "apt install -y $(echo -e $packages)"
+    boxborder "Installing packages $packages"
+    spin "for $_package in $packages ; do sudo apt=get install -y $_package ; done"
     depsinstalled=true
 }
 
@@ -132,6 +133,7 @@ install(){
         installdir="${globalinstalldir}"
         prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions=\"${installdir}/functions\""
+        globalinstall
     else
         installdir="${userinstalldir}"
         prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
@@ -221,12 +223,8 @@ globalinstall(){
         "$(boxline "${red_x} No")"
         )
         case `select_opt "${utilsmissing_menu[@]}"` in
-            0)  until [[ $depsinstalled == true ]] ; do
-                    boxborder "${grn}Installing dependencies...${dfl}"
-                    spin
-                    install-deps
-                done
-                endspin
+            0)  boxborder "${grn}Installing dependencies...${dfl}"
+                spin "install-deps"
                 ;;
             1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
@@ -242,12 +240,13 @@ globalinstall(){
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             #cp -r ${rundir}/lib/skel/* /etc/skel/
-            scp -r ${rundir}/lib/skel/.* /home/${selecteduser}
+            cp -r ${rundir}/lib/skel/.* /home/${selecteduser}
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
             chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}
             if [[ "$bins_missing" == "false" ]] ; then
+                boxborder "Checking ${selecteduser}'s bashrc..."
                 su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc
             fi
         fi
@@ -288,12 +287,10 @@ remove(){
 
 
 update(){
-    pushd $rundir
     remove
     git stash -m "$pretty_date stashing changes before update to latest"
     git fetch && git pull
     install
-    popd
 }
 
 #------------------------------------------------------#
