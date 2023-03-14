@@ -8,6 +8,7 @@ VERSION=2.0.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 rundir=${0%/*}
 source ${rundir}/functions
+installer_functionsrev=$functionsrev
 scriptname=${0##*/}
 runuser=$(whoami)
 users=($(ls /home/))
@@ -145,10 +146,19 @@ export prbl_functions=\"${installdir}/functions\""
 userinstall(){
 
     # Create install directory under user's home directory
-    mkdir -p ${userinstalldir}
+    mkdir -p ${installdir}
+
+    # Check if functions already exist, and check if functions are out of date
+    if [ -f ${installdir}/functions ] ; then
+        # if functions are out of date, remove before installing new version
+        if [[ $(vercomp $(cat ${rundir/functions} | grep functionsrev ) $installer_functionsrev) == 2 ]] ; then
+            rm ${installdir}/functions
+        fi
+    fi
+
 
     # Copy functions first
-    cp ${rundir}/PRbL/functions ${userinstalldir}/functions
+    cp ${rundir}/functions ${installdir}/functions
 
     # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
