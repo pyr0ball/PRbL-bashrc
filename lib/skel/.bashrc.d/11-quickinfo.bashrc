@@ -58,7 +58,28 @@ if ! [[ $scriptname =~ "-bash" ]] ; then
   rundir_absolute=$(pushd $rundir && pwd && popd)
   settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
 else
-  settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
+  if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"]
+    settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
+  else
+    # default quickinfo bashrc Preferences
+
+    # Disable run on non-interactive sessions (set true to disable)
+    interactive_only=false
+
+    # Network Adapter Preferences
+
+    # set false to hide network adapters without valid IP's
+    show_disconnected=true
+
+    # Ignored network adapter names (regex match)
+    # separate adapter names with '\|' ex. "lo\|tun0"
+    filtered_adapters="lo"
+
+    # Disks
+    # separate disk types with '\|' ex. "sd\|nvme"
+    allowed_disk_prefixes="sd\|md\|mapper\|nvme\|mmcblk\|root"
+    disallowed_disks="boot"
+  fi
 fi
 source $settingsfile
 
