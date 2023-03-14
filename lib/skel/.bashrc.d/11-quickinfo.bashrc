@@ -58,7 +58,7 @@ if ! [[ $scriptname =~ "-bash" ]] ; then
   rundir_absolute=$(pushd $rundir && pwd && popd)
   settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
 else
-  if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"]
+  if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"] ; then
     settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
   else
     # default quickinfo bashrc Preferences
