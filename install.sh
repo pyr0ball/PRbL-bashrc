@@ -28,37 +28,37 @@ curl
 
 # OS distribution auto-detection
 if type lsb_release >/dev/null 2>&1; then
-  # linuxbase.org
-  OS=$(lsb_release -si)
-  VER=$(lsb_release -sr)
+    # linuxbase.org
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
 elif [ -f /etc/debian_version ]; then
-  # Older Debian/Ubuntu/etc.
-  OS=Debian
-  VER=$(cat /etc/debian_version)
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
 elif [ -f /etc/os-release ]; then
-  # freedesktop.org and systemd
-  . /etc/os-release
-  OS=$NAME
-  VER=$VERSION_ID
+    # freedesktop.org and systemd
+    . /etc/os-release
+    OS=$NAME
+    VER=$VERSION_ID
 elif [ -f /etc/lsb-release ]; then
-  # For some versions of Debian/Ubuntu without lsb_release command
-  . /etc/lsb-release
-  OS=$DISTRIB_ID
-  VER=$DISTRIB_RELEASE
+    # For some versions of Debian/Ubuntu without lsb_release command
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
 elif [ -f /etc/debian_version ]; then
-  # Older Debian/Ubuntu/etc.
-  OS=Debian
-  VER=$(cat /etc/debian_version)
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
 elif [ -f /etc/SuSe-release ]; then
-  # Older SuSE/etc.
-  ...
+    # Older SuSE/etc.
+    ...
 elif [ -f /etc/redhat-release ]; then
-  # Older Red Hat, CentOS, etc.
-  OS=$(cat /etc/redhat-release | awk '{print $1}')
+    # Older Red Hat, CentOS, etc.
+    OS=$(cat /etc/redhat-release | awk '{print $1}')
 else
-  # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-  OS=$(uname -s)
-  VER=$(uname -r)
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
 fi
 
 # Add apt-notifier-common required packages
@@ -156,7 +156,6 @@ userinstall(){
         fi
     fi
 
-
     # Copy functions first
     cp ${rundir}/functions ${installdir}/functions
 
@@ -227,7 +226,7 @@ globalinstall(){
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
         echo -e "$bins_missing"
-        echo -e "Would you like to install? (this will require root password)"
+        echo -e "Would you like to install them? (this will require root password)"
         utilsmissing_menu=(
         "$(boxline "${green_check} Yes")"
         "$(boxline "${red_x} No")"

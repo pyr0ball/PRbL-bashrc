@@ -241,7 +241,9 @@ fi
 
 # Check for release upgrade
 if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
-    release_upgrade=$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)
+    if [ -f /var/lib/ubuntu-release-upgrader/release-upgrade-available ] ; then
+        release_upgrade=$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)
+    fi
 fi
 if [ "$(lsb_release -sd | cut -d ' ' -f4)" = "(development" ]; then
     unset release_upgrade
