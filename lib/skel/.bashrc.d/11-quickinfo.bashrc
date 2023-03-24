@@ -53,14 +53,16 @@ scriptname="${0##*/}"
 rundir="${0%/*}"
 # If running on login as a bashrc, the above variables will not give this script's data
 # Failover hardcoded settings location for now if running from login environment
-if ! [[ $scriptname =~ "-bash" ]] ; then
-  #rundir_absolute=$(cd $rundir && pwd)
-  rundir_absolute=$(pushd $rundir && pwd && popd)
-  settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
-else
-  if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"] ; then
-    settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
-  else
+
+### TODO: This implementation is still broken. context for location breaks during login
+# if ! [[ $scriptname =~ "-bash" ]] ; then
+#   #rundir_absolute=$(cd $rundir && pwd)
+#   rundir_absolute=$(pushd $rundir && pwd && popd)
+#   settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
+# else
+#   if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"] ; then
+#     settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
+#   else
     # default quickinfo bashrc Preferences
 
     # Disable run on non-interactive sessions (set true to disable)
@@ -79,9 +81,9 @@ else
     # separate disk types with '\|' ex. "sd\|nvme"
     allowed_disk_prefixes="sd\|md\|mapper\|nvme\|mmcblk\|root"
     disallowed_disks="boot"
-  fi
-fi
-source $settingsfile
+#   fi
+# fi
+# source $settingsfile
 
 # source PRbL functions
 if [ ! -z $prbl_functions ] ; then
