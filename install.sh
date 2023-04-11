@@ -6,9 +6,9 @@
 # initial vars
 VERSION=2.1.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
-source ${rundir}/functions
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
+source ${rundir}/functions
 installer_functionsrev=$functionsrev
 runuser=$(whoami)
 users=($(ls /home/))
@@ -121,7 +121,7 @@ check-deps(){
     if [[ $_bins_missing == 0 ]] ; then
         bins_missing="false"
     else
-        return $bins_missing
+        echo "$bins_missing"
     fi
 }
 
