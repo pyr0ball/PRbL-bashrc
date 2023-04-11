@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.0.1
+VERSION=2.1.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 source ${rundir}/functions
 scriptname="${BASH_SOURCE[0]##*/}"
@@ -246,7 +246,6 @@ userinstall(){
     fi
 
     boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
-    success "\t${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed!${dfl}"
 }
 
 globalinstall(){
@@ -315,7 +314,6 @@ globalinstall(){
         /bin/bash ${rundir_absolute}/extra.installs
     fi
     #clear
-    success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
 }
 
 
@@ -354,9 +352,9 @@ remove-arbitrary(){
 }
 
 update(){
-    remove
+    remove-arbitrary
     git stash -m "$pretty_date stashing changes before update to latest"
-    git fetch && git pull
+    git fetch && git pull --recurse-submodules
     install
 }
 
@@ -367,21 +365,24 @@ update(){
 case $1 in
     -i | --install)
         install
+        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
         ;;
     -r | --remove)
         remove
+        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Removed${dfl}]"
         ;;
     -d | --dependencies)
         install-deps
+        success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
         ;;
     -u | --update)
         update
-        exit 0
+        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
         remove-arbitrary
         install
-        exit 0
+        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
         ;;
     -h | --help)
         usage
