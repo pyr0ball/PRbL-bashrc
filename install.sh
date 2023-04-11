@@ -143,6 +143,15 @@ export prbl_functions=\"${installdir}/functions\""
     fi
 }
 
+install-file(){
+    installed_files=()
+    local _source="$1"
+    local _destination="$2"
+    installed_files+=("${_destination}/${_source##*/}")
+    cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+    echo "${_destination}/${_source##*/}" >> $rundir/installed_files.list
+}
+
 userinstall(){
 
     # Create install directory under user's home directory
@@ -157,11 +166,13 @@ userinstall(){
     fi
 
     # Copy functions first
-    cp ${rundir}/functions ${installdir}/functions
+    install-file ${rundir}/functions ${installdir}/functions
 
     # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
-    scp -r ${rundir}/lib/skel/.* $HOME
+    for file in `find ${rundir}/lib/skel/ -print` ; do
+        install-file $file $HOME
+    done
 
     # Check for dependent applications and warn user if any are missing
     check-deps
@@ -182,8 +193,8 @@ userinstall(){
     # If vim is installed, add config files for colorization and expandtab
     if [[ $viminstall != null ]] ; then
         mkdir -p ${HOME}/.vim/colors
-        cp $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
-        cp $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
+        install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
+        install-file $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
 
     # Check for existing bashrc config, append if missing
@@ -194,7 +205,7 @@ userinstall(){
 
 
     # Create the quickinfo cache directory
-    mkdir -p $HOME/.quickinfo
+    #mkdir -p $HOME/.quickinfo
     export prbl_functions="${installdir}/functions"
 
     # If all required dependencies are installed, launch initial cache creation
@@ -217,7 +228,7 @@ globalinstall(){
     mkdir -p ${globalinstalldir}
 
     # Copy functions
-    cp ${rundir}/PRbL/functions ${globalinstalldir}/functions
+    install-file ${rundir}/PRbL/functions ${globalinstalldir}/functions
     export prbl_functions="${globalinstalldir}/functions"
 
     # Check for dependent applications and offer to install
@@ -233,7 +244,7 @@ globalinstall(){
         )
         case `select_opt "${utilsmissing_menu[@]}"` in
             0)  boxborder "${grn}Installing dependencies...${dfl}"
-                spin "install-deps"
+                spin $(install-deps)
                 ;;
             1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
@@ -249,7 +260,9 @@ globalinstall(){
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             #cp -r ${rundir}/lib/skel/* /etc/skel/
-            cp -r ${rundir}/lib/skel/.* /home/${selecteduser}
+            for file in `find ${rundir}/lib/skel/ -print` ; do
+                install-file $file /home/${selecteduser}
+            done
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
@@ -263,8 +276,8 @@ globalinstall(){
 
     detectvim
     if [[ $viminstall != null ]] ; then
-        cp $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
-        cp $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+        install-file $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
+        install-file $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     fi
     if [ ! -z $(which sensors-detect) ] ; then
         sensors-detect --auto
@@ -280,18 +293,25 @@ globalinstall(){
 
 
 remove(){
-    if [[ $runuser == root ]] ; then
-        if [ -d $globalinstalldir ] ; then
-            sudo rm -rf ${globalinstalldir}
+    if [ -f $rundir/installed_files.list ] ; then
+        _installed_list=($(cat $rundir/installed_files.list))
+    fi
+    for file in "${installed_files[@]}" ; do
+        if [ -f $file ] ; then
+            rm "$file"
+            boxline "Removed $file"
         fi
-    fi
-    if [ -d $userinstalldir ] ; then
-        rm -rf $userinstalldir
-    fi
-    for file in $(pushd lib/skel/ ; find ; popd) ; do
-        rm $HOME/$file 2>&1 >dev/null
-        rmdir $HOME/$file 2>&1 >dev/null
     done
+    for file in "${_installed_list[@]}" ; do
+        if [ -f $file ] ; then
+            rm "$file"
+            boxline "Removed $file"
+        fi
+    done
+    if [ -f $rundir/installed_files.list ] ; then
+        rm $rundir/installed_files.list
+    fi
+    installed_files=()
 }
 
 
