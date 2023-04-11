@@ -4,16 +4,18 @@
 ###################################################################
 
 # initial vars
-VERSION=2.0.0
+VERSION=2.0.1
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
-rundir=${0%/*}
 source ${rundir}/functions
+scriptname="${BASH_SOURCE[0]##*/}"
+rundir="${BASH_SOURCE[0]%/*}"
 installer_functionsrev=$functionsrev
-scriptname=${0##*/}
 runuser=$(whoami)
 users=($(ls /home/))
 userinstalldir="$HOME/.local/share/prbl"
 globalinstalldir="/usr/share/prbl"
+backupFiles=()
+installed_files=()
 
 #-----------------------------------------------------------------#
 # Script-specific Parameters
@@ -143,8 +145,31 @@ export prbl_functions=\"${installdir}/functions\""
     fi
 }
 
+take-backup(){
+	name="$1"
+	if [[ -e $name.bak || -L $name.bak ]] ; then
+	 	echo " $name.bak backup already exists"
+	else
+		cp $1 "$name".bak
+		backup_files+=($name)
+        echo $name >> $rundir/backup_files.list
+	fi
+}
+
+restore-backup(){
+	echo "${#backup_files[@]}"
+	for file in "${backup_files[@]}"
+	do 
+		cp "$file".bak $file
+		echo "$file is restored"
+	done
+    backup_files=()
+    if [ -f $rundir/backup_files.list ] ; then
+        rm $rundir/backup_files.list
+    fi
+}
+
 install-file(){
-    installed_files=()
     local _source="$1"
     local _destination="$2"
     installed_files+=("${_destination}/${_source##*/}")
@@ -194,6 +219,7 @@ userinstall(){
     if [[ $viminstall != null ]] ; then
         mkdir -p ${HOME}/.vim/colors
         install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
+        take-backup $HOME/.vimrc
         install-file $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
 
@@ -277,6 +303,7 @@ globalinstall(){
     detectvim
     if [[ $viminstall != null ]] ; then
         install-file $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
+        take-backup /etc/vim/vimrc.local
         install-file $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     fi
     if [ ! -z $(which sensors-detect) ] ; then
@@ -312,8 +339,19 @@ remove(){
         rm $rundir/installed_files.list
     fi
     installed_files=()
+    # if [ -f $rundir/backup_files.list ] ; then
+    #     for file in $(cat $rundir/backup_files.list) ; do
+    #         restore-backup $file
+    #     done
+    # fi
+    restore-backup
 }
 
+remove-arbitrary(){
+    userinstall
+    globalinstall
+    remove
+}
 
 update(){
     remove
@@ -338,6 +376,11 @@ case $1 in
         ;;
     -u | --update)
         update
+        exit 0
+        ;;
+    -f | --force)
+        remove-arbitrary
+        install
         exit 0
         ;;
     -h | --help)
