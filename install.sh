@@ -14,6 +14,7 @@ runuser=$(whoami)
 users=($(ls /home/))
 userinstalldir="$HOME/.local/share/prbl"
 globalinstalldir="/usr/share/prbl"
+bins_missing=()
 backupFiles=()
 installed_files=()
 
@@ -114,14 +115,15 @@ check-deps(){
     for pkg in $packages ; do
         local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
         if [[ $_pkg != 0 ]] ; then
-            bins_missing="${bins_missing} $pkg"
+            bins_missing+=($pkg)
         fi
     done
     local _bins_missing=$(echo $bins_missing | wc -w)
     if [[ $_bins_missing == 0 ]] ; then
-        bins_missing="false"
+        bins_missing=("false")
+        return false
     else
-        echo "$bins_missing"
+        return true
     fi
 }
 
@@ -200,14 +202,13 @@ userinstall(){
     done
 
     # Check for dependent applications and warn user if any are missing
-    check-deps
-    if [[ "$bins_missing" != "false" ]] ; then
+    if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
-        echo -e "$bins_missing"
+        echo -e "${bins_missing[@]}"
         echo -e "After this installer completes, run:"
         boxseparator
-        echo -en "\n${lbl}sudo apt install -y $bins_missing\n${dfl}"
+        echo -en "\n${lbl}sudo apt install -y ${bins_missing[@]}\n${dfl}"
         boxborder "Press 'Enter' key when ready to proceed"
         read proceed
     fi
@@ -257,11 +258,10 @@ globalinstall(){
     export prbl_functions="${globalinstalldir}/functions"
 
     # Check for dependent applications and offer to install
-    check-deps
-    if [[ "$bins_missing" != "false" ]] ; then
+    if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
         echo -e "Missing utilities:"
-        echo -e "$bins_missing"
+        echo -e "${bins_missing[@]}"
         echo -e "Would you like to install them? (this will require root password)"
         utilsmissing_menu=(
         "$(boxline "${green_check} Yes")"
@@ -289,6 +289,7 @@ globalinstall(){
                 install-file $file /home/${selecteduser}
             done
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
+                take-backup /home/${selecteduser}/.bashrc
                 echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
             chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}
@@ -310,7 +311,7 @@ globalinstall(){
     fi
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extra.installs"] ; then
+    if [ -f "${rundir_absolute}/extra.installs" ] ; then
         /bin/bash ${rundir_absolute}/extra.installs
     fi
     #clear
