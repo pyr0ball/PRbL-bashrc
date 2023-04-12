@@ -23,11 +23,11 @@ installed_files=()
 #-----------------------------------------------------------------#
 
 # List of dependency packaged to be istalled via apt
-packages="git
+packages=(git
 vim
 lm-sensors
 curl
-"
+)
 
 # OS distribution auto-detection
 if type lsb_release >/dev/null 2>&1; then
@@ -66,8 +66,7 @@ fi
 
 # Add apt-notifier-common required packages
 if [[ $OS_DETECTED == "Debian" ]] || [[ $OS_DETECTED == "Ubuntu" ]]; then
-    packages="$packages
-apt-config-auto-update"
+    packages+=(apt-config-auto-update)
 fi
 
 bashrc_append="
@@ -112,7 +111,7 @@ detectvim(){
 }
 
 check-deps(){
-    for pkg in $packages ; do
+    for pkg in ${packages[@]} ; do
         local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
         if [[ $_pkg != 0 ]] ; then
             bins_missing+=($pkg)
@@ -226,6 +225,7 @@ userinstall(){
 
     # Check for existing bashrc config, append if missing
     if [[ $(cat ${HOME}/.bashrc | grep -c 'bashrc.d') == 0 ]] ; then
+        take-backup $HOME/.bashrc
         echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
         echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
     fi
@@ -365,25 +365,20 @@ update(){
 
 case $1 in
     -i | --install)
-        install
-        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
         ;;
     -r | --remove)
-        remove
-        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Removed${dfl}]"
+        remove && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Removed${dfl}]"
         ;;
     -d | --dependencies)
-        install-deps
-        success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
+        install-deps && success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
         ;;
     -u | --update)
-        update
-        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
+        update && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
         remove-arbitrary
-        install
-        success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
         ;;
     -h | --help)
         usage
