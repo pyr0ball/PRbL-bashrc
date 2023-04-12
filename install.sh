@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.1.0
+VERSION=2.2.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
@@ -128,7 +128,11 @@ check-deps(){
 
 install-deps(){
     boxborder "Installing packages $packages"
-    spin "for $_package in $packages ; do sudo apt=get install -y $_package ; done"
+    if [[ dry_run == true ]] ; then
+        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt=get install -y $_package ; done\""
+    else
+        spin "for $_package in $packages ; do sudo apt=get install -y $_package ; done"
+    fi
     depsinstalled=true
 }
 
@@ -147,14 +151,25 @@ export prbl_functions=\"${installdir}/functions\""
 }
 
 take-backup(){
-	name="$1"
-	if [[ -e $name.bak || -L $name.bak ]] ; then
-	 	echo " $name.bak backup already exists"
-	else
-		cp $1 "$name".bak
-		backup_files+=($name)
-        echo $name >> $rundir/backup_files.list
-	fi
+    if [[ dry_run == true ]] ; then
+        
+        if [[ -e $name.bak || -L $name.bak ]] ; then
+            boxline "DryRun: $name.bak backup already exists"
+        else
+            boxline "DryRun: cp $1 \"$name\".bak"
+            backup_files+=($name)
+            boxline "DryRun: $name >> $rundir/backup_files.list"
+        fi
+    else
+        name="$1"
+        if [[ -e $name.bak || -L $name.bak ]] ; then
+            echo " $name.bak backup already exists"
+        else
+            cp $1 "$name".bak
+            backup_files+=($name)
+            echo $name >> $rundir/backup_files.list
+        fi
+    fi
 }
 
 restore-backup(){
@@ -174,7 +189,11 @@ install-file(){
     local _source="$1"
     local _destination="$2"
     installed_files+=("${_destination}/${_source##*/}")
-    cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+    if [[ $dry_run == true ]] ; then
+        boxline "DryRun: cp -r $_source $_destination" 
+    else
+        cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+    fi
     echo "${_destination}/${_source##*/}" >> $rundir/installed_files.list
 }
 
@@ -359,6 +378,13 @@ update(){
     install
 }
 
+dry-run-report(){
+    boxborder \
+    "bins_missing= ${bins_missing[@]}" \
+    "backup_files= ${backup_files[@]}" \
+    "installed_files= ${installed_files[@]}"
+}
+
 #------------------------------------------------------#
 # Options and Arguments Parser
 #------------------------------------------------------#
@@ -372,6 +398,12 @@ case $1 in
         ;;
     -d | --dependencies)
         install-deps && success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
+        ;;
+    -D | --dry-run)
+        dry_run=true
+        install
+        dry-run-report
+        success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
         ;;
     -u | --update)
         update && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
