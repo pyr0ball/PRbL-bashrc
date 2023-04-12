@@ -120,9 +120,9 @@ check-deps(){
     local _bins_missing=$(echo $bins_missing | wc -w)
     if [[ $_bins_missing == 0 ]] ; then
         bins_missing=("false")
-        return false
+        return 1
     else
-        return true
+        return 0
     fi
 }
 
