@@ -401,8 +401,11 @@ remove(){
 }
 
 remove-arbitrary(){
+    update_run=true
     userinstall
     globalinstall
+    update_run=
+    backup_files=()
     remove
 }
 
