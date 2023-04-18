@@ -6,23 +6,39 @@
 # initial vars
 VERSION=2.2.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
+
+# Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
+
+# Source PRbL functions from installer directory
 source ${rundir}/functions
-installer_functionsrev=$functionsrev
-runuser=$(whoami)
-users=($(ls /home/))
-userinstalldir="$HOME/.local/share/prbl"
-globalinstalldir="/usr/share/prbl"
-bins_missing=()
-backupFiles=()
-installed_files=()
 
 #-----------------------------------------------------------------#
 # Script-specific Parameters
 #-----------------------------------------------------------------#
 
-# List of dependency packaged to be istalled via apt
+# Store functions revision in a variable to compare with if already installed
+installer_functionsrev=$functionsrev
+
+# Get and store the user currently executing this script
+runuser=$(whoami)
+
+# set up an array containing the users listed under /home/
+users=($(ls /home/))
+
+# If run as non-root, default install to user's home directory
+userinstalldir="$HOME/.local/share/prbl"
+
+# If run as root, this will be the install directory
+globalinstalldir="/usr/share/prbl"
+
+# Initialize arrays for file and dependency management
+bins_missing=()
+backupFiles=()
+installed_files=()
+
+# List of dependency packaged to be istalled via apt (For Debian/Ubuntu)
 packages=(git
 vim
 lm-sensors
@@ -69,6 +85,7 @@ if [[ $OS_DETECTED == "Debian" ]] || [[ $OS_DETECTED == "Ubuntu" ]]; then
     packages+=(apt-config-auto-update)
 fi
 
+# This variable is what is injected into the bashrc
 bashrc_append="
 # Pluggable bashrc config. Add environment modifications to ~/.bashrc.d/ and append with '.bashrc'
 if [ -n \"\$BASH_VERSION\" ]; then
@@ -85,6 +102,7 @@ fi
 # Script-specific Funcitons
 #-----------------------------------------------------------------#
 
+# Function for displaying the usage of this script
 usage(){
     boxborder \
         "${lyl}$scripttitle${dfl}" \
@@ -93,7 +111,11 @@ usage(){
         "$(boxseparator)" \
         "[args:]" \
         "   -i [--install]" \
+        "   -d [--dependencies]" \
+        "   -D [--dry-run]" \
         "   -r [--remove]" \
+        "   -f [--force]" \
+        "   -F [--force-remove]" \
         "   -u [--update]" \
         "   -h [--help]" \
         "" \
@@ -102,6 +124,7 @@ usage(){
 }
 
 detectvim(){
+    # If the vim install directory exists, check for and store the highest numerical value version installed
     if [ -d /usr/share/vim ] ; then
         viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
     else
@@ -111,15 +134,18 @@ detectvim(){
 }
 
 check-deps(){
+    # Iterate through the list of required packages and check if installed
     for pkg in ${packages[@]} ; do
         local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
+        # If not installed, add it to the list of missing bins
         if [[ $_pkg != 0 ]] ; then
             bins_missing+=($pkg)
         fi
     done
-    local _bins_missing=$(echo $bins_missing | wc -w)
-    if [[ $_bins_missing == 0 ]] ; then
-        bins_missing=("false")
+    # Count the number of entries in bins_missing
+    local _bins_missing=${#bins_missing[@]}
+    # If higher than 0, return a fail (1)
+    if [[ $_bins_missing != 0 ]] ; then
         return 1
     else
         return 0
@@ -131,18 +157,22 @@ install-deps(){
     if [[ dry_run == true ]] ; then
         boxline "DryRun: spin \"for $_package in $packages ; do sudo apt=get install -y $_package ; done\""
     else
+        # using a spinner function block to track installation progress
         spin "for $_package in $packages ; do sudo apt=get install -y $_package ; done"
     fi
+    # Sets dependency installed flag to true
     depsinstalled=true
 }
 
 install(){
+    # If script is run as root, run global install
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
         prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions=\"${installdir}/functions\""
         globalinstall
     else
+    # If user is non-root, run user-level install
         installdir="${userinstalldir}"
         prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
 export prbl_functions=\"${installdir}/functions\""
