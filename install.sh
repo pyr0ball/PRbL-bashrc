@@ -151,23 +151,24 @@ export prbl_functions=\"${installdir}/functions\""
 }
 
 take-backup(){
-    if [[ dry_run == true ]] ; then
-        
-        if [[ -e $name.bak || -L $name.bak ]] ; then
-            boxline "DryRun: $name.bak backup already exists"
+    if [[ $update_run != true ]] ; then
+        if [[ $dry_run == true ]] ; then
+            if [[ -e $name.bak || -L $name.bak ]] ; then
+                boxline "DryRun: $name.bak backup already exists"
+            else
+                boxline "DryRun: cp $1 \"$name\".bak"
+                backup_files+=($name)
+                boxline "DryRun: $name >> $rundir/backup_files.list"
+            fi
         else
-            boxline "DryRun: cp $1 \"$name\".bak"
-            backup_files+=($name)
-            boxline "DryRun: $name >> $rundir/backup_files.list"
-        fi
-    else
-        name="$1"
-        if [[ -e $name.bak || -L $name.bak ]] ; then
-            echo " $name.bak backup already exists"
-        else
-            cp $1 "$name".bak
-            backup_files+=($name)
-            echo $name >> $rundir/backup_files.list
+            name="$1"
+            if [[ -e $name.bak || -L $name.bak ]] ; then
+                boxline " $name.bak backup already exists"
+            else
+                cp $1 "$name".bak
+                backup_files+=($name)
+                boxline $name >> $rundir/backup_files.list
+            fi
         fi
     fi
 }
@@ -189,12 +190,16 @@ install-file(){
     local _source="$1"
     local _destination="$2"
     installed_files+=("${_destination}/${_source##*/}")
-    if [[ $dry_run == true ]] ; then
-        boxline "DryRun: cp -r $_source $_destination" 
+    if [[ $update_run == true ]] ; then
+        boxline "PRbL updater: added file ${_destination}/${_source##*/} to list"
     else
-        cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+        if [[ $dry_run == true ]] ; then
+            boxline "DryRun: cp -r $_source $_destination" 
+        else
+            cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+        fi
+        echo "${_destination}/${_source##*/}" >> $rundir/installed_files.list
     fi
-    echo "${_destination}/${_source##*/}" >> $rundir/installed_files.list
 }
 
 userinstall(){
@@ -375,6 +380,9 @@ update(){
     remove-arbitrary
     git stash -m "$pretty_date stashing changes before update to latest"
     git fetch && git pull --recurse-submodules
+    pushd PRbL
+        git pull
+    popd
     install
 }
 
@@ -406,6 +414,7 @@ case $1 in
         success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
         ;;
     -u | --update)
+        update_run=true
         update && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
