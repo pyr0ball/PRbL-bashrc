@@ -246,7 +246,7 @@ userinstall(){
     fi
 
     # Copy functions first
-    install-file ${rundir}/functions ${installdir}/functions
+    install-file ${rundir}/PRbL/functions ${installdir}/functions
 
     # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
