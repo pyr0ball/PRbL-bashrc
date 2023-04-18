@@ -451,6 +451,9 @@ case $1 in
         remove-arbitrary
         install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
         ;;
+    -F | --force-remove)
+        remove-arbitrary && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Force-Removed${dfl}]"
+        ;;
     -h | --help)
         usage
         ;;
