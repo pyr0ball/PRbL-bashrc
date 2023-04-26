@@ -244,38 +244,51 @@ restore-backup(){
 install-file(){
     local _source="$1"
     local _destination="$2"
-    installed_files+=("${_destination}/${_source##*/}")
+    local _source_root="$3"
+    local _filename=${_source##*/}
+    local _destination_file=${_destination}/${_filename#${_source_root}}
+    installed_files+=("${_destination_file}")
     if [[ $update_run == true ]] ; then
-        boxline "PRbL updater: added file ${_destination}/${_source##*/} to list"
+        boxline "$scriptname: added file ${_destination_file} to list"
     else
         if [[ $dry_run == true ]] ; then
-            boxline "DryRun: cp $_source $_destination"
+            boxline "DryRun: cp -p $_source $_destination_file"
         else
-            cp $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+            cp -p $_source $_destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
         fi
-        echo "${_destination}/${_source##*/}" >> $rundir/installed_files.list
+        echo "${_destination_file}" >> $rundir/installed_files.list
     fi
 }
 
 install-dir() {
     local _source="$1"
     local _destination="$2"
-    installed_dirs+=$_source
-    echo "$_destination" >> $rundir/installed_dirs.list
-    # Install the current directory
-    if [[ $update_run == true ]] ; then
-        boxline "PRbL updater: added directory ${_destination}/${_source##*/} to list"
-    else
-        # Loop through subdirectories
-        for item in "$_source"/*; do
-        if [[ -d "$item" ]]; then
-            # If item is a directory, recursively install it
-            install-dir "$item" "$_destination"
+    installed_dirs+=("$_source -> $_destination")
+    # Iterate through all files in the source directory recursively
+    while IFS= read -r -d '' source_file; do
+        # Construct the destination file path by removing the source directory path
+        # and appending it to the destination directory path
+        local _filename="${source_file#${_source}}"
+        local destination_file="${_destination}/${source_file#${_source}}"
+        # Create the parent directory of the destination file if it doesn't exist
+        # Log the destination file path to the logfile
+        #echo "$destination_file" >> "$logfile"
+        installed_files+=($destination_file)
+        if [[ $update_run == true ]] ; then
+            boxline "$scriptname: added file ${destination_file} to list"
         else
-            install-file "$item" "$_destination"
-        done
+            if [[ $dry_run == true ]] ; then
+                # Create the destination directory if it doesn't exist
+                boxline "DryRun: mkdir -p $(dirname $destination_file)"
+                boxline "DryRun: cp -p ${_source}${_filename} $destination_file"
+            else
+                # Create the destination directory if it doesn't exist
+                mkdir -p "$(dirname "$destination_file")"
+                cp -p ${_source}${_filename} $destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
+            fi
+            echo "${destination_file}" >> $rundir/installed_files.list
         fi
-    fi
+    done < <(find "$_source" -type f -print0)
 }
 
 # install-dir(){
@@ -308,13 +321,14 @@ userinstall(){
     fi
 
     # Copy functions first
-    install-file ${rundir}/PRbL/functions ${installdir}/functions
+    install-file ${rundir}/PRbL/functions ${installdir}
 
     # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
-    for file in "$rundir"/lib/skel/* ; do
-        install-dir $file $HOME
-    done
+    install-dir ${rundir}/lib/skel/ $HOME
+    # for file in $(ls -a -I . -I .. ${rundir}/lib/skel/) ; do
+    #     install-dir ${rundir}/lib/skel/$file $HOME
+    # done
 
     # Check for dependent applications and warn user if any are missing
     if ! check-deps ; then
@@ -334,7 +348,7 @@ userinstall(){
     # If vim is installed, add config files for colorization and expandtab
     if [[ $viminstall != null ]] ; then
         mkdir -p ${HOME}/.vim/colors
-        install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors/crystallite.vim
+        install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors
         take-backup $HOME/.vimrc
         install-file $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
     fi
@@ -401,13 +415,10 @@ globalinstall(){
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             #cp -r ${rundir}/lib/skel/* /etc/skel/
-            for file in `find ${rundir}/lib/skel/ -print | tail -n +2` ; do
-                if [[ -d "$file" ]] ; then
-                    install-dir $file /home/${selecteduser}
-                else
-                    install-file $file /home/${selecteduser}
-                fi
-            done
+            install-dir ${rundir}/lib/skel/ /home/${selecteduser}/
+            # for file in $(ls -a -I . -I .. ${rundir}/lib/skel/) ; do
+            #     install-dir ${rundir}/lib/skel/$file $HOME
+            # done
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 take-backup /home/${selecteduser}/.bashrc
                 echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
@@ -422,7 +433,7 @@ globalinstall(){
 
     detectvim
     if [[ $viminstall != null ]] ; then
-        install-file $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors/crystallite.vim
+        install-file $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors
         take-backup /etc/vim/vimrc.local
         install-file $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     fi
