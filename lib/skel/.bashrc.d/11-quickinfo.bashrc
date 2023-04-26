@@ -9,7 +9,7 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-quickinfo_version=2.0.3
+quickinfo_version=2.1.0
 prbl_functons_req_ver=1.1.3
 
 # Uses a wide variety of methods to check which distro this is run on
@@ -48,11 +48,10 @@ else
   VER=$(uname -r)
 fi
 
-# Locate and import settings (shares same name with script apart from file extension)
-scriptname="${0##*/}"
-rundir="${0%/*}"
+
 # If running on login as a bashrc, the above variables will not give this script's data
 # Failover hardcoded settings location for now if running from login environment
+# TODO: Need to re-test after v2.2.x
 
 ### TODO: This implementation is still broken. context for location breaks during login
 # if ! [[ $scriptname =~ "-bash" ]] ; then
@@ -91,12 +90,15 @@ if [ ! -z $prbl_functions ] ; then
 else
   # Failover if global variable is not defined. Checks for 'functions' in same location
   echo -e "PRbL functions not defined. Check ~/.bashrc"
-  if [ -f "$rundir/functions" ] ; then
+  if [ -f "${BASH_SOURCE[0]%/*}/functions" ] ; then
     source $rundir/functions
   else
     echo -e "local functions file also missing. Some visual elements will be missing"
   fi
 fi
+# Locate and import settings (shares same name with script apart from file extension)
+scriptname="${BASH_SOURCE[0]##*/}"
+rundir="${BASH_SOURCE[0]%/*}"
 
 # check PRbL functions version
 if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
@@ -153,10 +155,10 @@ while getopts ":h" opt
 #fi
 ################################
 
-# Global parameters pulled from cache file
+# Global parameters pulled from system environment
   location=$(uname -a | awk '{print $2}')
   image_version=$(uname -r)
-  software_version=$(echo $OS $VER)
+  software_version="$OS $VER"
 # Checks if variables are empty and fills the variables
 # with generic warning
 
@@ -176,7 +178,7 @@ fi
 # TODO: optimize this to run after time delay using timestamp in settings
 set_spinner spinner19
 #spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
-wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo )
+read -r wan_ip < <(wget -qO- http://ipecho.net/plain \| xargs echo)
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
@@ -198,7 +200,7 @@ read cpu user nice system idle iowait irq softirq steal guest< /proc/stat
 cpu_active_prev=$((user+system+nice+softirq+steal))
 cpu_total_prev=$((user+system+nice+softirq+steal+idle+iowait))
 
-sleep 1
+sleep 0.3
 
 # Read /proc/stat file (for second datapoint)
 read cpu user nice system idle iowait irq softirq steal guest< /proc/stat
@@ -277,13 +279,13 @@ for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
   adapters+=($device)
   _ip=$(ip -f inet -o addr show $device | cut -d\  -f 7 | cut -d/ -f 1 | head -n 1)
   if valid-ip $_ip ; then
-    ips=(${ips[@]} "$_ip")
-    ifups=(${ifups[@]} "up")
+    ips+=("$_ip")
+    ifups+=("up")
   else
-    ips=(${ips[@]} "${red}disconnected${dfl}")
-    ifups=(${ifups[@]} "down")
+    ips+=("${red}disconnected${dfl}")
+    ifups+=("down")
   fi
-  macs=(${macs[@]} "$(cat /sys/class/net/${device}/address)")
+  macs+=("$(cat /sys/class/net/${device}/address)")
 done
 
 ################################
@@ -301,10 +303,12 @@ freespaces=($(awk '{print $4}' <<< "${diskinfo}"))
 
 ################################
 #check for updates
-packages=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
-supdates=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates" | cut -d '.' -f1)
-packages=${packages%%\.*}
-supdates=${supdates%%\.*}
+if [ -f /usr/lib/update-notifier/apt-check ] ; then
+  packages=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
+  supdates=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates" | cut -d '.' -f1)
+  packages=${packages%%\.*}
+  supdates=${supdates%%\.*}
+fi
 # Check for updates
 if [[ $(echo ${packages} | grep -c updates) != 1 ]] || [ -z "${supdates}" ] || [ -z "${release_upgrade}" ] ; then
 #if [[ $(echo ${packages} | grep -c ^0\ updates) == 1 ]] ; then
