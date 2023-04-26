@@ -124,6 +124,24 @@ usage(){
         "You must run as 'root' for this script to automatically resolve dependencies"
 }
 
+run(){
+    _cmd=$@
+    if [[ dry_run == true ]] ; then
+        boxline "DryRun: $_cmd"
+    else
+        $_cmd
+    fi
+}
+
+run-and-log(){
+    _cmd=$@
+    if [[ dry_run == true ]] ; then
+        logger "DryRun: $_cmd"
+    else
+        logger $_cmd
+    fi
+}
+
 detectvim(){
     # If the vim install directory exists, check for and store the highest numerical value version installed
     if [[ -d /usr/share/vim ]] ; then
