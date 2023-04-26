@@ -182,23 +182,47 @@ export prbl_functions=\"${installdir}/functions\""
 }
 
 take-backup(){
+    name="$1"
     if [[ $update_run != true ]] ; then
         if [[ $dry_run == true ]] ; then
-            if [[ -e $name.bak || -L $name.bak ]] ; then
+            # Check if a backup file or symbolic link already exists
+            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
                 boxline "DryRun: $name.bak backup already exists"
             else
-                boxline "DryRun: cp $1 \"$name\".bak"
-                backup_files+=($name)
-                boxline "DryRun: $name >> $rundir/backup_files.list"
+                # Check if the file is a hidden file (starts with a dot)
+                if [[ "$name" == .* ]]; then
+                    # Add a dot to the beginning of the backup file name
+                    backup_name=".${name}.bak"
+                else
+                    # Create the backup file name by appending ".bak" to the original file name
+                    backup_name="${name}.bak"
+                fi
+                # Copy the file to the backup file with preservation of file attributes
+                boxline "DryRun: cp -p $name $backup_name"
+                # Add the original file to the list of backup files
+                backup_files+=("$name")
+                # Log the original file name to the backup file list file
+                boxline "DryRun: echo $name >> $rundir/backup_files.list"
             fi
         else
-            name="$1"
-            if [[ -e $name.bak || -L $name.bak ]] ; then
+            # Check if a backup file or symbolic link already exists
+            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
                 boxline " $name.bak backup already exists"
             else
-                cp $1 "$name".bak
-                backup_files+=($name)
-                boxline $name >> $rundir/backup_files.list
+                # Check if the file is a hidden file (starts with a dot)
+                if [[ "$name" == .* ]]; then
+                    # Add a dot to the beginning of the backup file name
+                    backup_name=".${name}.bak"
+                else
+                    # Create the backup file name by appending ".bak" to the original file name
+                    backup_name="${name}.bak"
+                fi
+                # Copy the file to the backup file with preservation of file attributes
+                cp -p "$name" "$backup_name"
+                # Add the original file to the list of backup files
+                backup_files+=("$name")
+                # Log the original file name to the backup file list file
+                boxline "$name" >> "$rundir/backup_files.list"
             fi
         fi
     fi
