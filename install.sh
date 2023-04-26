@@ -288,8 +288,8 @@ userinstall(){
 
     # Copy bashrc scripts to home folder
     #cp -r ${rundir}/lib/skel/* $HOME/
-    for file in `find ${rundir}/lib/skel/ -print` ; do
-        install-file $file $HOME
+    for file in "$rundir"/lib/skel/* ; do
+        install-dir $file $HOME
     done
 
     # Check for dependent applications and warn user if any are missing
