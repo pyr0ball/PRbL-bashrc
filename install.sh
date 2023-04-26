@@ -37,6 +37,7 @@ globalinstalldir="/usr/share/prbl"
 bins_missing=()
 backupFiles=()
 installed_files=()
+installed_dirs=()
 
 # List of dependency packaged to be istalled via apt (For Debian/Ubuntu)
 packages=(git
@@ -125,7 +126,7 @@ usage(){
 
 detectvim(){
     # If the vim install directory exists, check for and store the highest numerical value version installed
-    if [ -d /usr/share/vim ] ; then
+    if [[ -d /usr/share/vim ]] ; then
         viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
     else
         viminstall=null
@@ -224,13 +225,50 @@ install-file(){
         boxline "PRbL updater: added file ${_destination}/${_source##*/} to list"
     else
         if [[ $dry_run == true ]] ; then
-            boxline "DryRun: cp -r $_source $_destination" 
+            boxline "DryRun: cp $_source $_destination"
         else
-            cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+            cp $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
         fi
         echo "${_destination}/${_source##*/}" >> $rundir/installed_files.list
     fi
 }
+
+install-dir() {
+    local _source="$1"
+    local _destination="$2"
+    installed_dirs+=$_source
+    echo "$_destination" >> $rundir/installed_dirs.list
+    # Install the current directory
+    if [[ $update_run == true ]] ; then
+        boxline "PRbL updater: added directory ${_destination}/${_source##*/} to list"
+    else
+        # Loop through subdirectories
+        for item in "$_source"/*; do
+        if [[ -d "$item" ]]; then
+            # If item is a directory, recursively install it
+            install-dir "$item" "$_destination"
+        else
+            install-file "$item" "$_destination"
+        done
+        fi
+    fi
+}
+
+# install-dir(){
+#     local _source="$1"
+#     local _destination="$2"
+#     installed_dirs+=("${_destination}/${_source##*/}")
+#     if [[ $update_run == true ]] ; then
+#         boxline "PRbL updater: added directory ${_destination}/${_source##*/} to list"
+#     else
+#         if [[ $dry_run == true ]] ; then
+#             boxline "DryRun: cp -r $_source $_destination" 
+#         else
+#             cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
+#         fi
+#         echo "${_destination}/${_source}" >> $rundir/installed_dirs.list
+#     fi
+# }
 
 userinstall(){
 
@@ -339,8 +377,12 @@ globalinstall(){
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             #cp -r ${rundir}/lib/skel/* /etc/skel/
-            for file in `find ${rundir}/lib/skel/ -print` ; do
-                install-file $file /home/${selecteduser}
+            for file in `find ${rundir}/lib/skel/ -print | tail -n +2` ; do
+                if [[ -d "$file" ]] ; then
+                    install-dir $file /home/${selecteduser}
+                else
+                    install-file $file /home/${selecteduser}
+                fi
             done
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 take-backup /home/${selecteduser}/.bashrc
@@ -405,7 +447,7 @@ remove-arbitrary(){
     userinstall
     globalinstall
     update_run=
-    backup_files=()
+    #backup_files=()
     remove
 }
 
