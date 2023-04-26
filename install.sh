@@ -315,7 +315,8 @@ userinstall(){
     # Check if functions already exist, and check if functions are out of date
     if [ -f ${installdir}/functions ] ; then
         # if functions are out of date, remove before installing new version
-        if [[ $(vercomp $(cat ${rundir/functions} | grep functionsrev ) $installer_functionsrev) == 2 ]] ; then
+        local installerfrev=$(cat ${rundir}/functions | grep functionsrev )
+        if [[ $(vercomp ${installerfrev##*=} $installer_functionsrev ) == 2 ]] ; then
             rm ${installdir}/functions
         fi
     fi
