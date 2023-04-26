@@ -375,8 +375,9 @@ userinstall(){
     if [ -f "${rundir_absolute}/extra.installs" ] ; then
         /bin/bash ${rundir_absolute}/extra.installs
     fi
-
-    boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
+    if [[ $dry_run != true ]] ; then
+        boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
+    fi
 }
 
 globalinstall(){
@@ -497,10 +498,18 @@ update(){
 }
 
 dry-run-report(){
+    box-rounded
+    boxborder "${grn}Dry-run Report:${dfl}"
+    box-norm
     boxborder \
-    "bins_missing= ${bins_missing[@]}" \
-    "backup_files= ${backup_files[@]}" \
-    "installed_files= ${installed_files[@]}"
+    "bins_missing= " \
+    "${bins_missing[@]}" \
+    "backup_files= " \
+    "${backup_files[@]}" \
+    "installed_files= " \
+    "${installed_files[@]}" \
+    "installed_dirs= " \
+    "${installed_dirs[@]}"
 }
 
 #------------------------------------------------------#
