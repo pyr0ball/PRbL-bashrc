@@ -533,10 +533,9 @@ dry-run-report(){
 
 script-title(){
     boxborder \
-    "$(center ${lyl}$scriptname${dfl}") \
-
-
+    "$(center ${lyl}$scriptname${dfl})"
 }
+
 #------------------------------------------------------#
 # Options and Arguments Parser
 #------------------------------------------------------#
