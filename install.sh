@@ -40,10 +40,11 @@ installed_files=()
 installed_dirs=()
 
 # List of dependency packaged to be istalled via apt (For Debian/Ubuntu)
-packages=(git
-vim
-lm-sensors
-curl
+packages=(
+    git
+    vim
+    lm-sensors
+    curl
 )
 
 # OS distribution auto-detection
@@ -177,7 +178,7 @@ install-deps(){
         boxline "DryRun: spin \"for $_package in $packages ; do sudo apt=get install -y $_package ; done\""
     else
         # using a spinner function block to track installation progress
-        spin "for $_package in $packages ; do sudo apt=get install -y $_package ; done"
+        spin "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
     fi
     # Sets dependency installed flag to true
     depsinstalled=true
@@ -248,8 +249,7 @@ take-backup(){
 
 restore-backup(){
 	echo "${#backup_files[@]}"
-	for file in "${backup_files[@]}"
-	do 
+	for file in "${backup_files[@]}" ; do 
 		cp "$file".bak $file
 		echo "$file is restored"
 	done
@@ -475,18 +475,18 @@ remove(){
     fi
     for file in "${installed_files[@]}" ; do
         if [ -f $file ] ; then
-            rm "$file"
+            run rm "$file"
             boxline "Removed $file"
         fi
     done
     for file in "${_installed_list[@]}" ; do
         if [ -f $file ] ; then
-            rm "$file"
+            run rm "$file"
             boxline "Removed $file"
         fi
     done
     if [ -f $rundir/installed_files.list ] ; then
-        rm $rundir/installed_files.list
+        run rm $rundir/installed_files.list
     fi
     installed_files=()
     # if [ -f $rundir/backup_files.list ] ; then
@@ -531,6 +531,12 @@ dry-run-report(){
     "${installed_dirs[@]}"
 }
 
+script-title(){
+    boxborder \
+    "$(center ${lyl}$scriptname${dfl}") \
+
+
+}
 #------------------------------------------------------#
 # Options and Arguments Parser
 #------------------------------------------------------#
@@ -549,6 +555,7 @@ case $1 in
         dry_run=true
         install
         dry-run-report
+        usage
         success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
         ;;
     -u | --update)
