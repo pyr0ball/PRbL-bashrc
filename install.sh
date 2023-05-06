@@ -116,7 +116,6 @@ script-title(){
 # Function for displaying the usage of this script
 usage(){
     boxborder \
-        "${lyl}$scripttitle${dfl}" \
         "${lbl}Usage:${dfl}" \
         "${lyl}./$scriptname ${bld}[args]${dfl}" \
         "$(boxseparator)" \
@@ -400,8 +399,10 @@ userinstall(){
     #clear
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extra.installs" ] ; then
-        /bin/bash ${rundir_absolute}/extra.installs
+    if [ -f "${rundir_absolute}/extras/*.install" ] ; then
+        for file in ${rundir_absolute}/extras/*.install ; do
+            run /bin/bash "${rundir_absolute}/extras/$file"
+        done  
     fi
     if [[ $dry_run != true ]] ; then
         boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
@@ -471,8 +472,10 @@ globalinstall(){
     fi
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extra.installs" ] ; then
-        /bin/bash ${rundir_absolute}/extra.installs
+    if [ -f "${rundir_absolute}/extras/*.install" ] ; then
+        for file in ${rundir_absolute}/extras/*.install ; do
+            run /bin/bash "${rundir_absolute}/extras/$file"
+        done  
     fi
     #clear
 }
@@ -540,15 +543,10 @@ dry-run-report(){
     "${installed_dirs[@]}"
 }
 
-script-title(){
-    boxborder \
-    "$(center ${lyl}$scriptname${dfl})"
-}
-
 #------------------------------------------------------#
 # Options and Arguments Parser
 #------------------------------------------------------#
-
+script-title
 case $1 in
     -i | --install)
         install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
