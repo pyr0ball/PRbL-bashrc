@@ -104,6 +104,15 @@ fi
 # Script-specific Funcitons
 #-----------------------------------------------------------------#
 
+script-title(){
+    boxborder \
+    "${red}(_____ ${lrd}(_____  ${ylw}| |   ${ong}| |        ${lyl}(_____)           _        | | |            ${dfl}" \
+    "${red} _____) )${lrd}____) ) ${ylw}| _ ${ong}| |        ${lyl}   _   ____   ___| |_  ____| | | ____  ____ ${dfl}" \
+    "${red}|  ____${lrd}(_____ (${ylw}| ||  ${ong}| |        ${lyl}  | | |  _ \ /___)  _)/ _  | | |/ _  )/ ___)${dfl}" \
+    "${red}| |          ${lrd}| ${ylw}| |_) ) ${ong}|_____   ${lyl} _| |_| | | |___ | |_( ( | | | ( (/ /| |    ${dfl}" \
+    "${red}|_|          ${lrd}|_${ylw}|____/${ong}|_______)  ${lyl}(_____)_| |_(___/ \___)_||_|_|_|\____)_|    ${dfl}"
+}
+
 # Function for displaying the usage of this script
 usage(){
     boxborder \
