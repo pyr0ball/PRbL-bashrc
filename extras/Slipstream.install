@@ -1,0 +1,293 @@
+#/bin/bash
+# CodeDog Bootstrap installer script
+
+# Bash expansions to get the name and location of this script when run
+scriptname="${BASH_SOURCE[0]##*/}"
+rundir="${BASH_SOURCE[0]%/*}"
+logfile
+
+# Source PRbL Functions locally or retrieve from online
+if [ ! -z $prbl_functions ] ; then
+    source $prbl_functions
+else
+    curl -k 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions' > $rundir/functions
+    source $rundir/functions
+fi
+
+installdir="$HOME/devl"
+
+sys_packages=(
+    git
+    curl
+    python3
+    python3-pip
+)
+
+pip_packages=(
+    pyparsing
+)
+
+repo_packages=(
+    https://github.com/BruceDLong/CodeDog.git
+    https://github.com/BruceDLong/Proteus.git
+    https://github.com/BruceDLong/Slipstream.git
+)
+
+codedog_bashrc="# CodeDog system path setup
+export PATH=\"\$PATH:\$HOME/devl/CodeDog\"
+"
+
+run(){
+    _cmd=$@
+    if [[ dry_run == true ]] ; then
+        boxline "DryRun: $_cmd"
+    else
+        boxline "not a dry run"
+        $_cmd
+    fi
+}
+
+check-deps(){
+    # Iterate through the list of required packages and check if installed
+    for pkg in ${packages[@]} ; do
+        local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
+        # If not installed, add it to the list of missing bins
+        if [[ $_pkg != 0 ]] ; then
+            bins_missing+=($pkg)
+        fi
+    done
+    # Count the number of entries in bins_missing
+    local _bins_missing=${#bins_missing[@]}
+    # If higher than 0, return a fail (1)
+    if [[ $_bins_missing != 0 ]] ; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+install-deps(){
+    boxborder "Installing packages $packages"
+    run "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
+    # Sets dependency installed flag to true
+    depsinstalled=true
+}
+
+take-backup(){
+    name="$1"
+    if [[ $update_run != true ]] ; then
+        if [[ $dry_run == true ]] ; then
+            # Check if a backup file or symbolic link already exists
+            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
+                boxline "DryRun: $name.bak backup already exists"
+            else
+                # Check if the file is a hidden file (starts with a dot)
+                if [[ "$name" == .* ]]; then
+                    # Add a dot to the beginning of the backup file name
+                    backup_name=".${name}.bak"
+                else
+                    # Create the backup file name by appending ".bak" to the original file name
+                    backup_name="${name}.bak"
+                fi
+                # Copy the file to the backup file with preservation of file attributes
+                boxline "DryRun: cp -p $name $backup_name"
+                # Add the original file to the list of backup files
+                backup_files+=("$name")
+                # Log the original file name to the backup file list file
+                boxline "DryRun: echo $name >> $rundir/backup_files.list"
+            fi
+        else
+            # Check if a backup file or symbolic link already exists
+            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
+                boxline " $name.bak backup already exists"
+            else
+                # Check if the file is a hidden file (starts with a dot)
+                if [[ "$name" == .* ]]; then
+                    # Add a dot to the beginning of the backup file name
+                    backup_name=".${name}.bak"
+                else
+                    # Create the backup file name by appending ".bak" to the original file name
+                    backup_name="${name}.bak"
+                fi
+                # Copy the file to the backup file with preservation of file attributes
+                cp -p "$name" "$backup_name"
+                # Add the original file to the list of backup files
+                backup_files+=("$name")
+                # Log the original file name to the backup file list file
+                boxline "$name" >> "$rundir/backup_files.list"
+            fi
+        fi
+    fi
+}
+
+restore-backup(){
+	echo "${#backup_files[@]}"
+	for file in "${backup_files[@]}" ; do 
+		cp "$file".bak $file
+		echo "$file is restored"
+	done
+    backup_files=()
+    if [ -f $rundir/backup_files.list ] ; then
+        rm $rundir/backup_files.list
+    fi
+}
+
+install-file(){
+    local _source="$1"
+    local _destination="$2"
+    local _source_root="$3"
+    local _filename=${_source##*/}
+    local _destination_file=${_destination}/${_filename#${_source_root}}
+    installed_files+=("${_destination_file}")
+    if [[ $update_run == true ]] ; then
+        boxline "$scriptname: added file ${_destination_file} to list"
+    else
+        if [[ $dry_run == true ]] ; then
+            boxline "DryRun: cp -p $_source $_destination_file"
+        else
+            cp -p $_source $_destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
+        fi
+        echo "${_destination_file}" >> $rundir/installed_files.list
+    fi
+}
+
+install-dir() {
+    local _source="$1"
+    local _destination="$2"
+    installed_dirs+=("$_source -> $_destination")
+    # Iterate through all files in the source directory recursively
+    while IFS= read -r -d '' source_file; do
+        # Construct the destination file path by removing the source directory path
+        # and appending it to the destination directory path
+        local _filename="${source_file#${_source}}"
+        local destination_file="${_destination}/${source_file#${_source}}"
+        # Create the parent directory of the destination file if it doesn't exist
+        # Log the destination file path to the logfile
+        #echo "$destination_file" >> "$logfile"
+        installed_files+=($destination_file)
+        if [[ $update_run == true ]] ; then
+            boxline "$scriptname: added file ${destination_file} to list"
+        else
+            if [[ $dry_run == true ]] ; then
+                # Create the destination directory if it doesn't exist
+                boxline "DryRun: mkdir -p $(dirname $destination_file)"
+                boxline "DryRun: cp -p ${_source}${_filename} $destination_file"
+            else
+                # Create the destination directory if it doesn't exist
+                mkdir -p "$(dirname "$destination_file")"
+                cp -p ${_source}${_filename} $destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
+            fi
+            echo "${destination_file}" >> $rundir/installed_files.list
+        fi
+    done < <(find "$_source" -type f -print0)
+}
+
+clone-repo(){
+    # git clone <source url> <destination>
+    local _url=$1
+    local _destination=$2
+    if [ ! -z $_destination ] ; then
+        mkdir -p $_destination
+    fi
+    git clone --recurse-submodules $_url $_destination
+}
+
+dry-run-report(){
+    box-rounded
+    boxborder "${grn}Dry-run Report:${dfl}"
+    box-norm
+    boxborder \
+    "bins_missing= " \
+    "${bins_missing[@]}" \
+    "backup_files= " \
+    "${backup_files[@]}" \
+    "installed_files= " \
+    "${installed_files[@]}" \
+    "installed_dirs= " \
+    "${installed_dirs[@]}"
+}
+
+install(){
+        # If script is run as root, run global install
+    run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/70-CodeDog.bashrc && boxborder "bashc.d/70-CodeDog.bashrc installed..."
+    export PATH="$PATH:$HOME/devl/CodeDog"
+    # Check for dependent applications and offer to install
+    if ! check-deps ; then
+        run warn "Some of the utilities needed by this script are missing"
+        boxtop
+        run boxline "Missing utilities:"
+        for bin in ${bins_missing[@]} ; do
+            run boxline "${bins_missing[$bin]}"
+        done
+        boxbottom
+        boxborder "Would you like to install them? (this will require root password)"
+        utilsmissing_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${utilsmissing_menu[@]}"` in
+            0)  boxborder "${grn}Installing dependencies...${dfl}"
+                run sudo install-deps
+                ;;
+            1)  run warn "Dependent Utilities missing: $bins_missing" ;;
+        esac
+    fi
+    run mkdir -p $installdir
+    pushd $installdir
+        for repo in $repo_packages ; do
+            run clone-repo $repo
+        done
+    popd
+    pushd $installdir/Proteus
+        run sudo python3 ruleMgr.py
+    popd
+    pushd $installdir/Slipstream
+        run codeDog ./Slipstream.dog && success "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
+    popd
+}
+
+case $1 in
+    -i | --install)
+        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        ;;
+    -r | --remove)
+        remove && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Removed${dfl}]"
+        ;;
+    -d | --dependencies)
+        install-deps && success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
+        ;;
+    -D | --dry-run)
+        export dry_run=true
+        echo dry_run=$dry_run
+        install
+        dry-run-report
+        usage
+        unset dry_run
+        success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
+        ;;
+    -u | --update)
+        export update_run=true
+        update && unset update_run && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
+        ;;
+    -f | --force)
+        remove-arbitrary
+        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        ;;
+    -F | --force-remove)
+        remove-arbitrary && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Force-Removed${dfl}]"
+        ;;
+    -h | --help)
+        usage
+        ;;
+    *)
+        warn "Invalid argument $@"
+        usage
+        #exit 2
+        ;;
+esac
+
+#------------------------------------------------------#
+# Script begins here
+#------------------------------------------------------#
+
+#install
