@@ -560,15 +560,19 @@ case $1 in
         install-deps && success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
         ;;
     -D | --dry-run)
-        dry_run=true
+        export dry_run=true
+        box-light
+        boxtop
         install
+        boxbottom
         dry-run-report
         usage
+        unset dry_run
         success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
         ;;
     -u | --update)
-        update_run=true
-        update && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
+        export update_run=true
+        update && unset update_run && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
         remove-arbitrary
