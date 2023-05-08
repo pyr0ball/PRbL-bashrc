@@ -4,7 +4,7 @@
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
-logfile
+logfile="$rundir/$scriptname.log"
 
 # Source PRbL Functions locally or retrieve from online
 if [ ! -z $prbl_functions ] ; then
@@ -37,16 +37,6 @@ codedog_bashrc="# CodeDog system path setup
 export PATH=\"\$PATH:\$HOME/devl/CodeDog\"
 "
 
-run(){
-    _cmd=$@
-    if [[ dry_run == true ]] ; then
-        boxline "DryRun: $_cmd"
-    else
-        boxline "not a dry run"
-        $_cmd
-    fi
-}
-
 check-deps(){
     # Iterate through the list of required packages and check if installed
     for pkg in ${packages[@]} ; do
@@ -67,7 +57,7 @@ check-deps(){
 }
 
 install-deps(){
-    boxborder "Installing packages $packages"
+    logger "Installing packages $packages"
     run "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
     # Sets dependency installed flag to true
     depsinstalled=true
@@ -187,9 +177,9 @@ clone-repo(){
     local _url=$1
     local _destination=$2
     if [ ! -z $_destination ] ; then
-        mkdir -p $_destination
+        run mkdir -p $_destination
     fi
-    git clone --recurse-submodules $_url $_destination
+    run git clone --recurse-submodules $_url $_destination
 }
 
 dry-run-report(){
@@ -213,11 +203,11 @@ install(){
     export PATH="$PATH:$HOME/devl/CodeDog"
     # Check for dependent applications and offer to install
     if ! check-deps ; then
-        run warn "Some of the utilities needed by this script are missing"
+        warn "Some of the utilities needed by this install are missing"
         boxtop
-        run boxline "Missing utilities:"
+        logger echo -e "Missing utilities:"
         for bin in ${bins_missing[@]} ; do
-            run boxline "${bins_missing[$bin]}"
+            logger echo -e "${bins_missing[$bin]}"
         done
         boxbottom
         boxborder "Would you like to install them? (this will require root password)"
@@ -227,7 +217,7 @@ install(){
         )
         case `select_opt "${utilsmissing_menu[@]}"` in
             0)  boxborder "${grn}Installing dependencies...${dfl}"
-                run sudo install-deps
+                install-deps
                 ;;
             1)  run warn "Dependent Utilities missing: $bins_missing" ;;
         esac
@@ -246,15 +236,32 @@ install(){
     popd
 }
 
+# Function for displaying the usage of this script
+usage(){
+    boxborder \
+        "${lbl}Usage:${dfl}" \
+        "${lyl}./$scriptname ${bld}[args]${dfl}" \
+        "$(boxseparator)" \
+        "[args:]" \
+        "   -i [--install]" \
+        "   -d [--dependencies]" \
+        "   -D [--dry-run]" \
+        "   -r [--remove]" \
+        "   -f [--force]" \
+        "   -F [--force-remove]" \
+        "   -u [--update]" \
+        "   -h [--help]"
+}
+
 case $1 in
     -i | --install)
-        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        install && success " [${lbl}Slip${blu}Stream ${lyl}Installed${dfl}]"
         ;;
     -r | --remove)
-        remove && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Removed${dfl}]"
+        remove && success " [${lbl}Slip${blu}Stream ${lyl}Removed${dfl}]"
         ;;
     -d | --dependencies)
-        install-deps && success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
+        install-deps && success "${lbl}Slip${blu}Stream ${dfl} Dependencies installed!"
         ;;
     -D | --dry-run)
         export dry_run=true
@@ -263,18 +270,18 @@ case $1 in
         dry-run-report
         usage
         unset dry_run
-        success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
+        success "${lbl}Slip${blu}Stream Installer Dry-Run Complete!"
         ;;
     -u | --update)
         export update_run=true
-        update && unset update_run && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
+        update && unset update_run && success " [${lbl}Slip${blu}Stream ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
         remove-arbitrary
-        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        install && success " [${lbl}Slip${blu}Stream ${lyl}Installed${dfl}]"
         ;;
     -F | --force-remove)
-        remove-arbitrary && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Force-Removed${dfl}]"
+        remove-arbitrary && success " [${lbl}Slip${blu}Stream ${lyl}Force-Removed${dfl}]"
         ;;
     -h | --help)
         usage

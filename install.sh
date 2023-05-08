@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.2.0
+VERSION=2.2.1
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
@@ -317,6 +317,25 @@ install-dir() {
     done < <(find "$_source" -type f -print0)
 }
 
+install-extras(){
+    _extras=()
+    for file in ${rundir_absolute}/extras/*.install ; do
+        _extras+=("${rundir_absolute}/extras/$file.install")
+    done
+
+    boxborder "Which extras should be installed?"
+    multiselect result _extras "false"
+
+    # For each extra, compare input choice and apply installs
+    idx=0
+    for extra in "${_extras[@]}"; do
+        # If the selected user is set to true
+        if [[ "${result[idx]}" == "true" ]] ; then
+            run /bin/bash "$extra"
+        fi
+    done
+}
+
 # install-dir(){
 #     local _source="$1"
 #     local _destination="$2"
@@ -399,10 +418,17 @@ userinstall(){
     #clear
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extras/*.install" ] ; then
-        for file in ${rundir_absolute}/extras/*.install ; do
-            run /bin/bash "${rundir_absolute}/extras/$file"
-        done  
+    if [ -d "${rundir_absolute}/extras/" ] ; then
+        extras_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${extras_menu[@]}"` in
+            0)  boxborder "${grn}Installing extras...${dfl}"
+                install-extras
+                ;;
+            1)  logger "Skipping extras installs" ;;
+        esac
     fi
     if [[ $dry_run != true ]] ; then
         boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
@@ -420,9 +446,9 @@ globalinstall(){
     # Check for dependent applications and offer to install
     if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
-        echo -e "Missing utilities:"
-        echo -e "${bins_missing[@]}"
-        echo -e "Would you like to install them? (this will require root password)"
+        logger "Missing utilities:"
+        logger "${bins_missing[@]}"
+        logger "Would you like to install them? (this will require root password)"
         utilsmissing_menu=(
         "$(boxline "${green_check} Yes")"
         "$(boxline "${red_x} No")"
