@@ -57,8 +57,15 @@ check-deps(){
 }
 
 install-deps(){
-    logger "Installing packages $packages"
-    run "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
+    logger "Installing packages $sys_packages"
+    run "for $_package in $sys_packages ; do sudo apt-get install -y $_package ; done"
+    if [ -f ${rundir}/requirements.txt ] ; then
+        pip install -y ${rundir}/requirements.txt
+    else
+        if [ ! -z $pip_packages ] ; then
+            pip install -y ${pip_packages[@]}
+        fi
+    fi
     # Sets dependency installed flag to true
     depsinstalled=true
 }
@@ -219,7 +226,7 @@ install(){
             0)  boxborder "${grn}Installing dependencies...${dfl}"
                 install-deps
                 ;;
-            1)  run warn "Dependent Utilities missing: $bins_missing" ;;
+            1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
     fi
     run mkdir -p $installdir
