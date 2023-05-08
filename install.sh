@@ -154,7 +154,7 @@ run-and-log(){
 detectvim(){
     # If the vim install directory exists, check for and store the highest numerical value version installed
     if [[ -d /usr/share/vim ]] ; then
-        viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
+        viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}' | tail -n 1)
     else
         viminstall=null
         warn "vim is not currently installed, unable to set up colorscheme and formatting"
