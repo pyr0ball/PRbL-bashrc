@@ -135,19 +135,19 @@ usage(){
 
 run(){
     _cmd=$@
-    if [[ dry_run == true ]] ; then
-        boxline "DryRun: $_cmd"
-    else
+    if [[ $dry_run != true ]] ; then
         $_cmd
+    else
+        boxline "DryRun: $_cmd"
     fi
 }
 
 run-and-log(){
     _cmd=$@
-    if [[ dry_run == true ]] ; then
-        logger "DryRun: $_cmd"
-    else
+    if [[ $dry_run != true ]] ; then
         logger $_cmd
+    else
+        logger "DryRun: $_cmd"
     fi
 }
 
