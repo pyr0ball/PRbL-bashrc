@@ -11,8 +11,10 @@ scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
+
 # Source PRbL functions from installer directory
 source ${rundir}/functions
+rundir_absolute=$(pushd $rundir ; pwd ; popd)
 
 #-----------------------------------------------------------------#
 # Script-specific Parameters
@@ -286,8 +288,8 @@ install-dir() {
 
 install-extras(){
     _extras=()
-    for file in ${rundir_absolute}/extras/*.install ; do
-        _extras+=("${rundir_absolute}/extras/$file.install")
+    for file in $(ls ${rundir}/extras/*.install) ; do
+        _extras+=("$file")
     done
 
     boxborder "Which extras should be installed?"
@@ -301,6 +303,23 @@ install-extras(){
             run exec "$extra"
         fi
     done
+}
+
+extras-menu(){
+    # Download and install any other extras
+    #if [ -d "${rundir_absolute}/extras/" ] ; then
+        boxborder "Extra installs available. Select and install?"
+        extras_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${extras_menu[@]}"` in
+            0)  boxborder "${grn}Installing extras...${dfl}"
+                install-extras
+                ;;
+            1)  logger "Skipping extras installs" ;;
+        esac
+    #fi
 }
 
 # install-dir(){
@@ -382,19 +401,7 @@ userinstall(){
     #fi
     #clear
 
-    # Download and install any other extras
-    if [ -d "${rundir_absolute}/extras/" ] ; then
-        extras_menu=(
-        "$(boxline "${green_check} Yes")"
-        "$(boxline "${red_x} No")"
-        )
-        case `select_opt "${extras_menu[@]}"` in
-            0)  boxborder "${grn}Installing extras...${dfl}"
-                install-extras
-                ;;
-            1)  logger "Skipping extras installs" ;;
-        esac
-    fi
+    extras-menu
     if [[ $dry_run != true ]] ; then
         boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
     fi
@@ -463,11 +470,7 @@ globalinstall(){
     fi
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extras/*.install" ] ; then
-        for file in ${rundir_absolute}/extras/*.install ; do
-            run /bin/bash "${rundir_absolute}/extras/$file"
-        done  
-    fi
+    extras-menu
     #clear
 }
 
@@ -551,12 +554,12 @@ case $1 in
         ;;
     -D | --dry-run)
         export dry_run=true
-        box-light
+        box-double
         boxtop
         install
         boxbottom
         dry-run-report
-        usage
+        usage   
         unset dry_run
         success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
         ;;
