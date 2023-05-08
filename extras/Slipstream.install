@@ -148,7 +148,7 @@ install-file(){
     fi
 }
 
-install-dir() {
+install-dir(){
     local _source="$1"
     local _destination="$2"
     installed_dirs+=("$_source -> $_destination")
@@ -231,8 +231,8 @@ install(){
     fi
     run mkdir -p $installdir
     pushd $installdir
-        for repo in $repo_packages ; do
-            run clone-repo $repo
+        for repo in ${repo_packages[@]} ; do
+            clone-repo $repo
         done
     popd
     pushd $installdir/Proteus
