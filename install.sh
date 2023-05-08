@@ -396,7 +396,9 @@ userinstall(){
         mkdir -p ${HOME}/.vim/colors
         install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors
         take-backup $HOME/.vimrc
-        install-file $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
+        cp $rundir/lib/vimfiles/vimrc.local $rundir/lib/vimfiles/.vimrc
+        install-file $rundir/lib/vimfiles/.vimrc $HOME
+        rm $rundir/lib/vimfiles/.vimrc
     fi
 
     # Check for existing bashrc config, append if missing

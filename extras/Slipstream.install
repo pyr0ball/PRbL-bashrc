@@ -132,7 +132,7 @@ restore-backup(){
 install-file(){
     local _source="$1"
     local _destination="$2"
-    local _source_root="$3"
+    local _source_root="$3" # Optional 3rd argument if root dir is different than rundir
     local _filename=${_source##*/}
     local _destination_file=${_destination}/${_filename#${_source_root}}
     installed_files+=("${_destination_file}")
@@ -239,7 +239,7 @@ install(){
         run sudo python3 ruleMgr.py
     popd
     pushd $installdir/Slipstream
-        run codeDog ./Slipstream.dog && success "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
+        run $installdir/CodeDog/codeDog ./Slipstream.dog && logger "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
     popd
 }
 
@@ -262,33 +262,32 @@ usage(){
 
 case $1 in
     -i | --install)
-        install && success " [${lbl}Slip${blu}Stream ${lyl}Installed${dfl}]"
+        install && success " [${lbl}Slip${gry}Stream ${lyl}Installed${dfl}]"
         ;;
     -r | --remove)
-        remove && success " [${lbl}Slip${blu}Stream ${lyl}Removed${dfl}]"
+        remove && success " [${lbl}Slip${gry}Stream ${lyl}Removed${dfl}]"
         ;;
     -d | --dependencies)
-        install-deps && success "${lbl}Slip${blu}Stream ${dfl} Dependencies installed!"
+        install-deps && success "${lbl}Slip${gry}Stream ${dfl} Dependencies installed!"
         ;;
     -D | --dry-run)
         export dry_run=true
-        echo dry_run=$dry_run
         install
         dry-run-report
         usage
         unset dry_run
-        success "${lbl}Slip${blu}Stream Installer Dry-Run Complete!"
+        success "${lbl}Slip${gry}Stream ${lyl}Installer Dry-Run Complete!${dfl}"
         ;;
     -u | --update)
         export update_run=true
-        update && unset update_run && success " [${lbl}Slip${blu}Stream ${lyl}Updated${dfl}]"
+        update && unset update_run && success " [${lbl}Slip${gry}Stream ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
         remove-arbitrary
         install && success " [${lbl}Slip${blu}Stream ${lyl}Installed${dfl}]"
         ;;
     -F | --force-remove)
-        remove-arbitrary && success " [${lbl}Slip${blu}Stream ${lyl}Force-Removed${dfl}]"
+        remove-arbitrary && success " [${lbl}Slip${gry}Stream ${lyl}Force-Removed${dfl}]"
         ;;
     -h | --help)
         usage
