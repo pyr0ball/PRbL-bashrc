@@ -89,6 +89,7 @@ install-deps(){
             else
                 run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/master/extras/$_package -D
             fi
+        fi
     done
     # Sets dependency installed flag to true
     depsinstalled=true
