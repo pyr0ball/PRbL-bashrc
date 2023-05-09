@@ -25,6 +25,7 @@ else
     fi
 fi
 rundir_absolute=$(pushd $rundir ; pwd ; popd)
+escape_dir=$(printf %q "${rundir_absolute}")
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
 #-----------------------------------------------------------------#
 # Script-specific Parameters
@@ -280,9 +281,8 @@ install-dir() {
 
 install-extras(){
     _extras=()
-    extra_installs=$(printf %q "${rundir_absolute}/extras/*.install")
-    # echo "extra_installs=$extra_installs"
-    for file in "$extra_installs" ; do
+    extra_installs=$(ls ${escape_dir}/extras/)
+    for file in $extra_installs ; do
         _extras+=("$file")
     done
 
