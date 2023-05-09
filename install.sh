@@ -145,24 +145,6 @@ usage(){
         "You must run as 'root' for this script to automatically resolve dependencies"
 }
 
-run(){
-    _cmd=$@
-    if [[ $dry_run != true ]] ; then
-        $_cmd
-    else
-        boxline "DryRun: $_cmd"
-    fi
-}
-
-run-and-log(){
-    _cmd=$@
-    if [[ $dry_run != true ]] ; then
-        logger $_cmd
-    else
-        logger "DryRun: $_cmd"
-    fi
-}
-
 detectvim(){
     # If the vim install directory exists, check for and store the highest numerical value version installed
     if [[ -d /usr/share/vim ]] ; then
@@ -195,7 +177,7 @@ check-deps(){
 install-deps(){
     boxborder "Installing packages $packages"
     if [[ dry_run == true ]] ; then
-        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt=get install -y $_package ; done\""
+        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
     else
         # using a spinner function block to track installation progress
         spin "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
