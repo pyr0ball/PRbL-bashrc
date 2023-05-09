@@ -54,11 +54,13 @@ check-deps(){
             bins_missing+=($pkg)
         fi
     done
-    if ! $(which python3) ; then
+    pybin=$(which python3)
+    if [ -z $pybin ] ; then
         run sudo apt-get install -y python3 python3-pip
         # TODO: make a universal package install function
     fi
-    if ! $(which pip3) ; then
+    pipbin=$(which pip3)
+    if [ -z $pipbin ] ; then
         run sudo apt-get install -y python3-pip
     fi
     for pkg in ${pip_packages[@]} ; do
@@ -70,8 +72,8 @@ check-deps(){
 
     # This installer requires golang to work
     # TODO: better handling of prbl_packages as dependencies
-
-    if ! $(which go) ; then
+    gobin=$(which go)
+    if  [ -z $gobin ] ; then
         bins_missing+=("prbl: golang.install")
     fi
     # Count the number of entries in bins_missing
