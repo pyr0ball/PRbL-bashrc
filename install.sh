@@ -4,16 +4,28 @@
 ###################################################################
 
 # initial vars
-VERSION=2.2.0
+VERSION=2.2.2
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
-# Source PRbL functions from installer directory
-source ${rundir}/functions
 
+# Source PRbL functions from installer directory
+# Source PRbL Functions locally or retrieve from online
+# TODO: Add version check to this
+if [ ! -z $prbl_functions ] ; then
+    source $prbl_functions
+else
+    if [ -f ${rundir}/functions ] ; then
+        source ${rundir}/functions
+    else
+        source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+    fi
+fi
+rundir_absolute=$(pushd $rundir ; pwd ; popd)
+logfile="${rundir}/${pretty_date}_${scriptname}.log"
 #-----------------------------------------------------------------#
 # Script-specific Parameters
 #-----------------------------------------------------------------#
@@ -133,28 +145,10 @@ usage(){
         "You must run as 'root' for this script to automatically resolve dependencies"
 }
 
-run(){
-    _cmd=$@
-    if [[ dry_run == true ]] ; then
-        boxline "DryRun: $_cmd"
-    else
-        $_cmd
-    fi
-}
-
-run-and-log(){
-    _cmd=$@
-    if [[ dry_run == true ]] ; then
-        logger "DryRun: $_cmd"
-    else
-        logger $_cmd
-    fi
-}
-
 detectvim(){
     # If the vim install directory exists, check for and store the highest numerical value version installed
     if [[ -d /usr/share/vim ]] ; then
-        viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}')
+        viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}' | tail -n 1)
     else
         viminstall=null
         warn "vim is not currently installed, unable to set up colorscheme and formatting"
@@ -183,7 +177,7 @@ check-deps(){
 install-deps(){
     boxborder "Installing packages $packages"
     if [[ dry_run == true ]] ; then
-        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt=get install -y $_package ; done\""
+        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
     else
         # using a spinner function block to track installation progress
         spin "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
@@ -211,59 +205,37 @@ export prbl_functions=\"${installdir}/functions\""
 take-backup(){
     name="$1"
     if [[ $update_run != true ]] ; then
-        if [[ $dry_run == true ]] ; then
-            # Check if a backup file or symbolic link already exists
-            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
-                boxline "DryRun: $name.bak backup already exists"
-            else
-                # Check if the file is a hidden file (starts with a dot)
-                if [[ "$name" == .* ]]; then
-                    # Add a dot to the beginning of the backup file name
-                    backup_name=".${name}.bak"
-                else
-                    # Create the backup file name by appending ".bak" to the original file name
-                    backup_name="${name}.bak"
-                fi
-                # Copy the file to the backup file with preservation of file attributes
-                boxline "DryRun: cp -p $name $backup_name"
-                # Add the original file to the list of backup files
-                backup_files+=("$name")
-                # Log the original file name to the backup file list file
-                boxline "DryRun: echo $name >> $rundir/backup_files.list"
-            fi
+        # Check if a backup file or symbolic link already exists
+        if [[ -e "$name.bak" || -L "$name.bak" ]]; then
+            run boxline " $name.bak backup already exists"
         else
-            # Check if a backup file or symbolic link already exists
-            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
-                boxline " $name.bak backup already exists"
+            # Check if the file is a hidden file (starts with a dot)
+            if [[ "$name" == .* ]]; then
+                # Add a dot to the beginning of the backup file name
+                backup_name=".${name}.bak"
             else
-                # Check if the file is a hidden file (starts with a dot)
-                if [[ "$name" == .* ]]; then
-                    # Add a dot to the beginning of the backup file name
-                    backup_name=".${name}.bak"
-                else
-                    # Create the backup file name by appending ".bak" to the original file name
-                    backup_name="${name}.bak"
-                fi
-                # Copy the file to the backup file with preservation of file attributes
-                cp -p "$name" "$backup_name"
-                # Add the original file to the list of backup files
-                backup_files+=("$name")
-                # Log the original file name to the backup file list file
-                boxline "$name" >> "$rundir/backup_files.list"
+                # Create the backup file name by appending ".bak" to the original file name
+                backup_name="${name}.bak"
             fi
+            # Copy the file to the backup file with preservation of file attributes
+            run cp -p "$name" "$backup_name"
+            # Add the original file to the list of backup files
+            backup_files+=("$name")
+            # Log the original file name to the backup file list file
+            run echo "$name" >> "$rundir/backup_files.list"
         fi
     fi
 }
 
 restore-backup(){
-	echo "${#backup_files[@]}"
+	run echo "${#backup_files[@]}"
 	for file in "${backup_files[@]}" ; do 
-		cp "$file".bak $file
-		echo "$file is restored"
+		run cp "$file".bak $file
+		run echo "$file is restored"
 	done
     backup_files=()
     if [ -f $rundir/backup_files.list ] ; then
-        rm $rundir/backup_files.list
+        run rm $rundir/backup_files.list
     fi
 }
 
@@ -275,14 +247,10 @@ install-file(){
     local _destination_file=${_destination}/${_filename#${_source_root}}
     installed_files+=("${_destination_file}")
     if [[ $update_run == true ]] ; then
-        boxline "$scriptname: added file ${_destination_file} to list"
+        run boxline "$scriptname: added file ${_destination_file} to list"
     else
-        if [[ $dry_run == true ]] ; then
-            boxline "DryRun: cp -p $_source $_destination_file"
-        else
-            cp -p $_source $_destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
-        fi
-        echo "${_destination_file}" >> $rundir/installed_files.list
+        run cp -p $_source $_destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
+        run echo "${_destination_file}" >> $rundir/installed_files.list
     fi
 }
 
@@ -301,49 +269,66 @@ install-dir() {
         #echo "$destination_file" >> "$logfile"
         installed_files+=($destination_file)
         if [[ $update_run == true ]] ; then
-            boxline "$scriptname: added file ${destination_file} to list"
+            run boxline "$scriptname: added file ${destination_file} to list"
         else
-            if [[ $dry_run == true ]] ; then
-                # Create the destination directory if it doesn't exist
-                boxline "DryRun: mkdir -p $(dirname $destination_file)"
-                boxline "DryRun: cp -p ${_source}${_filename} $destination_file"
-            else
-                # Create the destination directory if it doesn't exist
-                mkdir -p "$(dirname "$destination_file")"
-                cp -p ${_source}${_filename} $destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
-            fi
-            echo "${destination_file}" >> $rundir/installed_files.list
+            run mkdir -p "$(dirname "$destination_file")"
+            run cp -p ${_source}${_filename} $destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
+            run echo "${destination_file}" >> $rundir/installed_files.list
         fi
     done < <(find "$_source" -type f -print0)
 }
 
-# install-dir(){
-#     local _source="$1"
-#     local _destination="$2"
-#     installed_dirs+=("${_destination}/${_source##*/}")
-#     if [[ $update_run == true ]] ; then
-#         boxline "PRbL updater: added directory ${_destination}/${_source##*/} to list"
-#     else
-#         if [[ $dry_run == true ]] ; then
-#             boxline "DryRun: cp -r $_source $_destination" 
-#         else
-#             cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
-#         fi
-#         echo "${_destination}/${_source}" >> $rundir/installed_dirs.list
-#     fi
-# }
+install-extras(){
+    _extras=()
+    for file in $(ls ${rundir_absolute}/extras/*.install) ; do
+        _extras+=("$file")
+    done
+
+    boxborder "Which extras should be installed?"
+    multiselect result _extras "false"
+
+    # For each extra, compare input choice and apply installs
+    idx=0
+    for extra in "${_extras[@]}"; do
+        # If the selected user is set to true
+        if [[ "${result[idx]}" == "true" ]] ; then
+            if [[ $dry_run != true ]] ; then
+                bash "$extra -i"
+            else
+                bash "$extra -D"
+            fi
+        fi
+    done
+}
+
+extras-menu(){
+    # Download and install any other extras
+    #if [ -d "${rundir_absolute}/extras/" ] ; then
+        boxborder "Extra installs available. Select and install?"
+        extras_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${extras_menu[@]}"` in
+            0)  boxborder "${grn}Installing extras...${dfl}"
+                install-extras
+                ;;
+            1)  logger "Skipping extras installs" ;;
+        esac
+    #fi
+}
 
 userinstall(){
 
     # Create install directory under user's home directory
-    mkdir -p ${installdir}
+    run mkdir -p ${installdir}
 
     # Check if functions already exist, and check if functions are out of date
     if [ -f ${installdir}/functions ] ; then
         # if functions are out of date, remove before installing new version
         local installerfrev=$(cat ${rundir}/functions | grep functionsrev )
         if [[ $(vercomp ${installerfrev##*=} $installer_functionsrev ) == 2 ]] ; then
-            rm ${installdir}/functions
+            run rm ${installdir}/functions
         fi
     fi
 
@@ -351,11 +336,7 @@ userinstall(){
     install-file ${rundir}/PRbL/functions ${installdir}
 
     # Copy bashrc scripts to home folder
-    #cp -r ${rundir}/lib/skel/* $HOME/
     install-dir ${rundir}/lib/skel/ $HOME
-    # for file in $(ls -a -I . -I .. ${rundir}/lib/skel/) ; do
-    #     install-dir ${rundir}/lib/skel/$file $HOME
-    # done
 
     # Check for dependent applications and warn user if any are missing
     if ! check-deps ; then
@@ -377,14 +358,16 @@ userinstall(){
         mkdir -p ${HOME}/.vim/colors
         install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors
         take-backup $HOME/.vimrc
-        install-file $rundir/lib/vimfiles/vimrc.local $HOME/.vimrc
+        cp $rundir/lib/vimfiles/vimrc.local $rundir/lib/vimfiles/.vimrc
+        install-file $rundir/lib/vimfiles/.vimrc $HOME
+        rm $rundir/lib/vimfiles/.vimrc
     fi
 
     # Check for existing bashrc config, append if missing
     if [[ $(cat ${HOME}/.bashrc | grep -c 'bashrc.d') == 0 ]] ; then
         take-backup $HOME/.bashrc
-        echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
-        echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
+        run echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
+        run echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
     fi
 
 
@@ -398,12 +381,7 @@ userinstall(){
     #fi
     #clear
 
-    # Download and install any other extras
-    if [ -f "${rundir_absolute}/extras/*.install" ] ; then
-        for file in ${rundir_absolute}/extras/*.install ; do
-            run /bin/bash "${rundir_absolute}/extras/$file"
-        done  
-    fi
+    extras-menu
     if [[ $dry_run != true ]] ; then
         boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
     fi
@@ -411,7 +389,7 @@ userinstall(){
 
 globalinstall(){
     # Create global install directory
-    mkdir -p ${globalinstalldir}
+    run mkdir -p ${globalinstalldir}
 
     # Copy functions
     install-file ${rundir}/PRbL/functions ${globalinstalldir}/functions
@@ -420,9 +398,9 @@ globalinstall(){
     # Check for dependent applications and offer to install
     if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
-        echo -e "Missing utilities:"
-        echo -e "${bins_missing[@]}"
-        echo -e "Would you like to install them? (this will require root password)"
+        logger "Missing utilities:"
+        logger "${bins_missing[@]}"
+        logger "Would you like to install them? (this will require root password)"
         utilsmissing_menu=(
         "$(boxline "${green_check} Yes")"
         "$(boxline "${red_x} No")"
@@ -451,12 +429,12 @@ globalinstall(){
             # done
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 take-backup /home/${selecteduser}/.bashrc
-                echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
+                run echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
-            chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}
+            run sudo chown -R ${selecteduser}:${selecteduser} ${installdir}
             if [[ "$bins_missing" == "false" ]] ; then
                 boxborder "Checking ${selecteduser}'s bashrc..."
-                su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc
+                run su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc
             fi
         fi
     done
@@ -468,18 +446,13 @@ globalinstall(){
         install-file $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
     fi
     if [ ! -z $(which sensors-detect) ] ; then
-        sensors-detect --auto
+        run sensors-detect --auto
     fi
 
     # Download and install any other extras
-    if [ -f "${rundir_absolute}/extras/*.install" ] ; then
-        for file in ${rundir_absolute}/extras/*.install ; do
-            run /bin/bash "${rundir_absolute}/extras/$file"
-        done  
-    fi
+    extras-menu
     #clear
 }
-
 
 remove(){
     if [ -f $rundir/installed_files.list ] ; then
@@ -520,10 +493,11 @@ remove-arbitrary(){
 
 update(){
     remove-arbitrary
-    git stash -m "$pretty_date stashing changes before update to latest"
-    git fetch && git pull --recurse-submodules
+    run git stash -m "$pretty_date stashing changes before update to latest"
+    run git fetch && run git pull --recurse-submodules
     pushd PRbL
-        git pull
+        run git checkout master
+        run git pull
     popd
     install
 }
@@ -559,12 +533,12 @@ case $1 in
         ;;
     -D | --dry-run)
         export dry_run=true
-        box-light
+        box-double
         boxtop
         install
         boxbottom
         dry-run-report
-        usage
+        usage   
         unset dry_run
         success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
         ;;
