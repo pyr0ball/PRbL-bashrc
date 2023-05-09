@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 # CodeDog Bootstrap installer script
 
 # Bash expansions to get the name and location of this script when run
@@ -62,7 +62,7 @@ check-deps(){
         run sudo apt-get install -y python3-pip
     fi
     for pkg in ${pip_packages[@]} ; do
-        pippkg_installed=$(pip list | grep -F $pkg ; echo &?)
+        pippkg_installed=$(pip list | grep -F $pkg ; echo $?)
         if [[ $pippkg_installed != 0 ]] ; then
             bins_missing+=("pip: $pkg")
         fi
