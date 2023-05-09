@@ -103,8 +103,9 @@ dry-run-report(){
 }
 
 install(){
-        # If script is run as root, run global install
-    run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/70-CodeDog.bashrc && boxborder "bashc.d/70-CodeDog.bashrc installed..."
+    if [ ! -f $HOME/.bashrc.d/70-CodeDog.bashrc ] ; then
+        run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/70-CodeDog.bashrc && boxborder "bashc.d/70-CodeDog.bashrc installed..."
+    fi
     export PATH="$PATH:$HOME/devl/CodeDog"
     # Check for dependent applications and offer to install
     if ! check-deps ; then
