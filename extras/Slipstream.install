@@ -77,11 +77,18 @@ install-deps(){
         fi
     fi
     for _package in $prbl_packages ; do
-        if [[ $dry_run != true ]] ; then
-            bash "${rundir}/$_package -i"
+        if [ -f ${rundir}/$_package ] ; then
+            if [[ $dry_run != true ]] ; then
+                bash "${rundir}/$_package -i"
+            else
+                bash "${rundir}/$_package -D"
+            fi
         else
-            bash "${rundir}/$_package -D"
-        fi
+            if [[ $dry_run != true ]] ; then
+                run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/master/extras/$_package -i
+            else
+                run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/master/extras/$_package -D
+            fi
     done
     # Sets dependency installed flag to true
     depsinstalled=true
