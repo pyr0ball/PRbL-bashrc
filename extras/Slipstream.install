@@ -9,7 +9,11 @@ rundir="${BASH_SOURCE[0]%/*}"
 if [ ! -z $prbl_functions ] ; then
     source $prbl_functions
 else
-    source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+    if [ -f ${rundir}/functions ] ; then
+        source ${rundir}/functions
+    else
+        source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+    fi
 fi
 
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
@@ -31,6 +35,10 @@ repo_packages=(
     https://github.com/BruceDLong/CodeDog.git
     https://github.com/BruceDLong/Proteus.git
     https://github.com/BruceDLong/Slipstream.git
+)
+
+prbl_packages=(
+    golang.install
 )
 
 codedog_bashrc="# CodeDog system path setup
@@ -58,7 +66,9 @@ check-deps(){
 
 install-deps(){
     logger echo "Installing packages $sys_packages"
-    run "for $_package in $sys_packages ; do sudo apt-get install -y $_package ; done"
+    for _package in $sys_packages ; do
+        run sudo apt-get install -y $_package
+    done
     if [ -f ${rundir}/requirements.txt ] ; then
         pip install -y ${rundir}/requirements.txt
     else
@@ -66,6 +76,13 @@ install-deps(){
             pip install -y ${pip_packages[@]}
         fi
     fi
+    for _package in $prbl_packages ; do
+        if [[ $dry_run != true ]] ; then
+            bash "${rundir}/$_package -i"
+        else
+            bash "${rundir}/$_package -D"
+        fi
+    done
     # Sets dependency installed flag to true
     depsinstalled=true
 }
