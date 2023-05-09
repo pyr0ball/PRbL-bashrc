@@ -58,7 +58,7 @@ check-deps(){
         run sudo apt-get install -y python3 python3-pip
         # TODO: make a universal package install function
     fi
-    if ! $(which pip3)
+    if ! $(which pip3) ; then
         run sudo apt-get install -y python3-pip
     fi
     for pkg in ${pip_packages[@]} ; do
