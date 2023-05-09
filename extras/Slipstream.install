@@ -4,18 +4,18 @@
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
-logfile="$rundir/$scriptname.log"
 
 # Source PRbL Functions locally or retrieve from online
 if [ ! -z $prbl_functions ] ; then
     source $prbl_functions
 else
-    curl -k 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions' > $rundir/functions
-    source $rundir/functions
+    source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
 fi
 
+logfile="${rundir}/${pretty_date}_${scriptname}.log"
 installdir="$HOME/devl"
 
+# Dependencies
 sys_packages=(
     git
     curl
@@ -57,7 +57,7 @@ check-deps(){
 }
 
 install-deps(){
-    logger "Installing packages $sys_packages"
+    logger echo "Installing packages $sys_packages"
     run "for $_package in $sys_packages ; do sudo apt-get install -y $_package ; done"
     if [ -f ${rundir}/requirements.txt ] ; then
         pip install -y ${rundir}/requirements.txt
@@ -239,7 +239,7 @@ install(){
         run sudo python3 ruleMgr.py
     popd
     pushd $installdir/Slipstream
-        run $installdir/CodeDog/codeDog ./Slipstream.dog && logger "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
+        run $installdir/CodeDog/codeDog ./Slipstream.dog && logger echo "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
     popd
 }
 
