@@ -36,7 +36,7 @@ repo_packages=(
 codedog_bashrc="# CodeDog system path setup
 export PATH=\"\$PATH:\$HOME/devl/CodeDog\"
 "
-
+# Functions 
 check-deps(){
     # Iterate through the list of required packages and check if installed
     for pkg in ${packages[@]} ; do
@@ -68,125 +68,6 @@ install-deps(){
     fi
     # Sets dependency installed flag to true
     depsinstalled=true
-}
-
-take-backup(){
-    name="$1"
-    if [[ $update_run != true ]] ; then
-        if [[ $dry_run == true ]] ; then
-            # Check if a backup file or symbolic link already exists
-            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
-                boxline "DryRun: $name.bak backup already exists"
-            else
-                # Check if the file is a hidden file (starts with a dot)
-                if [[ "$name" == .* ]]; then
-                    # Add a dot to the beginning of the backup file name
-                    backup_name=".${name}.bak"
-                else
-                    # Create the backup file name by appending ".bak" to the original file name
-                    backup_name="${name}.bak"
-                fi
-                # Copy the file to the backup file with preservation of file attributes
-                boxline "DryRun: cp -p $name $backup_name"
-                # Add the original file to the list of backup files
-                backup_files+=("$name")
-                # Log the original file name to the backup file list file
-                boxline "DryRun: echo $name >> $rundir/backup_files.list"
-            fi
-        else
-            # Check if a backup file or symbolic link already exists
-            if [[ -e "$name.bak" || -L "$name.bak" ]]; then
-                boxline " $name.bak backup already exists"
-            else
-                # Check if the file is a hidden file (starts with a dot)
-                if [[ "$name" == .* ]]; then
-                    # Add a dot to the beginning of the backup file name
-                    backup_name=".${name}.bak"
-                else
-                    # Create the backup file name by appending ".bak" to the original file name
-                    backup_name="${name}.bak"
-                fi
-                # Copy the file to the backup file with preservation of file attributes
-                cp -p "$name" "$backup_name"
-                # Add the original file to the list of backup files
-                backup_files+=("$name")
-                # Log the original file name to the backup file list file
-                boxline "$name" >> "$rundir/backup_files.list"
-            fi
-        fi
-    fi
-}
-
-restore-backup(){
-	echo "${#backup_files[@]}"
-	for file in "${backup_files[@]}" ; do 
-		cp "$file".bak $file
-		echo "$file is restored"
-	done
-    backup_files=()
-    if [ -f $rundir/backup_files.list ] ; then
-        rm $rundir/backup_files.list
-    fi
-}
-
-install-file(){
-    local _source="$1"
-    local _destination="$2"
-    local _source_root="$3" # Optional 3rd argument if root dir is different than rundir
-    local _filename=${_source##*/}
-    local _destination_file=${_destination}/${_filename#${_source_root}}
-    installed_files+=("${_destination_file}")
-    if [[ $update_run == true ]] ; then
-        boxline "$scriptname: added file ${_destination_file} to list"
-    else
-        if [[ $dry_run == true ]] ; then
-            boxline "DryRun: cp -p $_source $_destination_file"
-        else
-            cp -p $_source $_destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
-        fi
-        echo "${_destination_file}" >> $rundir/installed_files.list
-    fi
-}
-
-install-dir(){
-    local _source="$1"
-    local _destination="$2"
-    installed_dirs+=("$_source -> $_destination")
-    # Iterate through all files in the source directory recursively
-    while IFS= read -r -d '' source_file; do
-        # Construct the destination file path by removing the source directory path
-        # and appending it to the destination directory path
-        local _filename="${source_file#${_source}}"
-        local destination_file="${_destination}/${source_file#${_source}}"
-        # Create the parent directory of the destination file if it doesn't exist
-        # Log the destination file path to the logfile
-        #echo "$destination_file" >> "$logfile"
-        installed_files+=($destination_file)
-        if [[ $update_run == true ]] ; then
-            boxline "$scriptname: added file ${destination_file} to list"
-        else
-            if [[ $dry_run == true ]] ; then
-                # Create the destination directory if it doesn't exist
-                boxline "DryRun: mkdir -p $(dirname $destination_file)"
-                boxline "DryRun: cp -p ${_source}${_filename} $destination_file"
-            else
-                # Create the destination directory if it doesn't exist
-                mkdir -p "$(dirname "$destination_file")"
-                cp -p ${_source}${_filename} $destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
-            fi
-            echo "${destination_file}" >> $rundir/installed_files.list
-        fi
-    done < <(find "$_source" -type f -print0)
-}
-
-clone-repo(){
-    # git clone <source url> <destination>
-    local _url=$1
-    local _destination=$2
-    if [ ! -z $_destination ] ; then
-        run mkdir -p $_destination
-    fi
-    run git clone --recurse-submodules $_url $_destination
 }
 
 dry-run-report(){
