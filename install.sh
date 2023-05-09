@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.2.1
+VERSION=2.2.2
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
@@ -13,9 +13,19 @@ rundir="${BASH_SOURCE[0]%/*}"
 
 
 # Source PRbL functions from installer directory
-source ${rundir}/functions
+# Source PRbL Functions locally or retrieve from online
+# TODO: Add version check to this
+if [ ! -z $prbl_functions ] ; then
+    source $prbl_functions
+else
+    if [ -f ${rundir}/functions ] ; then
+        source ${rundir}/functions
+    else
+        source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+    fi
+fi
 rundir_absolute=$(pushd $rundir ; pwd ; popd)
-
+logfile="${rundir}/${pretty_date}_${scriptname}.log"
 #-----------------------------------------------------------------#
 # Script-specific Parameters
 #-----------------------------------------------------------------#
@@ -288,7 +298,7 @@ install-dir() {
 
 install-extras(){
     _extras=()
-    for file in $(ls ${rundir}/extras/*.install) ; do
+    for file in $(ls ${rundir_absolute}/extras/*.install) ; do
         _extras+=("$file")
     done
 
@@ -300,7 +310,11 @@ install-extras(){
     for extra in "${_extras[@]}"; do
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
-            run exec "$extra"
+            if [[ $dry_run != true ]] ; then
+                bash "$extra -i"
+            else
+                bash "$extra -D"
+            fi
         fi
     done
 }
@@ -321,22 +335,6 @@ extras-menu(){
         esac
     #fi
 }
-
-# install-dir(){
-#     local _source="$1"
-#     local _destination="$2"
-#     installed_dirs+=("${_destination}/${_source##*/}")
-#     if [[ $update_run == true ]] ; then
-#         boxline "PRbL updater: added directory ${_destination}/${_source##*/} to list"
-#     else
-#         if [[ $dry_run == true ]] ; then
-#             boxline "DryRun: cp -r $_source $_destination" 
-#         else
-#             cp -r $_source $_destination && boxline "Installed ${_source##*/}" || warn "Unable to install ${_source##*/}"
-#         fi
-#         echo "${_destination}/${_source}" >> $rundir/installed_dirs.list
-#     fi
-# }
 
 userinstall(){
 
@@ -473,7 +471,6 @@ globalinstall(){
     extras-menu
     #clear
 }
-
 
 remove(){
     if [ -f $rundir/installed_files.list ] ; then
