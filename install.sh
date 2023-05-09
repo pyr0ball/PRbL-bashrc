@@ -313,7 +313,7 @@ extras-menu(){
             0)  boxborder "${grn}Installing extras...${dfl}"
                 install-extras
                 ;;
-            1)  logger "Skipping extras installs" ;;
+            1)  logger boxline "Skipping extras installs" ;;
         esac
     #fi
 }
