@@ -280,7 +280,9 @@ install-dir() {
 
 install-extras(){
     _extras=()
-    for file in $(ls ${rundir_absolute}/extras/*.install) ; do
+    extra_installs=$(printf %q "${rundir_absolute}/extras/*.install")
+    # echo "extra_installs=$extra_installs"
+    for file in "$extra_installs" ; do
         _extras+=("$file")
     done
 
