@@ -47,13 +47,33 @@ export PATH=\"\$PATH:\$HOME/devl/CodeDog\"
 # Functions 
 check-deps(){
     # Iterate through the list of required packages and check if installed
-    for pkg in ${packages[@]} ; do
+    for pkg in ${sys_packages[@]} ; do
         local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
         # If not installed, add it to the list of missing bins
         if [[ $_pkg != 0 ]] ; then
             bins_missing+=($pkg)
         fi
     done
+    if ! $(which python3) ; then
+        run sudo apt-get install -y python3 python3-pip
+        # TODO: make a universal package install function
+    fi
+    if ! $(which pip3)
+        run sudo apt-get install -y python3-pip
+    fi
+    for pkg in ${pip_packages[@]} ; do
+        pippkg_installed=$(pip list | grep -F $pkg ; echo &?)
+        if [[ $pippkg_installed != 0 ]] ; then
+            bins_missing+=("pip: $pkg")
+        fi
+    done
+
+    # This installer requires golang to work
+    # TODO: better handling of prbl_packages as dependencies
+
+    if ! $(which go) ; then
+        bins_missing+=("prbl: golang.install")
+    fi
     # Count the number of entries in bins_missing
     local _bins_missing=${#bins_missing[@]}
     # If higher than 0, return a fail (1)
