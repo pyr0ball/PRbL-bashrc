@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.3.0
+VERSION=2.3.1
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
@@ -175,18 +175,6 @@ check-deps(){
     fi
 }
 
-install-deps(){
-    boxborder "Installing packages $packages"
-    if [[ dry_run == true ]] ; then
-        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
-    else
-        # using a spinner function block to track installation progress
-        spin "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
-    fi
-    # Sets dependency installed flag to true
-    depsinstalled=true
-}
-
 install(){
     # If script is run as root, run global install
     if [[ $runuser == root ]] ; then
@@ -201,6 +189,16 @@ export prbl_functions=\"${installdir}/functions\""
 export prbl_functions=\"${installdir}/functions\""
         userinstall
     fi
+}
+
+install-functions(){
+    # Copy functions
+    if [ -f ${rundir}/PRbL/functions ] ; then
+        install-file ${rundir}/PRbL/functions ${installdir}
+    else
+        curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions' > ${rundir}/functions
+        install-file ${rundir}/functions ${installdir}/functions
+    fi  
 }
 
 take-backup(){
@@ -279,6 +277,18 @@ install-dir() {
     done < <(find "$_source" -type f -print0)
 }
 
+install-deps(){
+    boxborder "Installing packages $packages"
+    if [[ dry_run == true ]] ; then
+        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
+    else
+        # using a spinner function block to track installation progress
+        spin "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
+    fi
+    # Sets dependency installed flag to true
+    depsinstalled=true
+}
+
 install-extras(){
     _extras=()
     extra_installs=$(ls ${escape_dir}/extras/)
@@ -315,13 +325,13 @@ extras-menu(){
             0)  boxborder "${grn}Installing extras...${dfl}"
                 install-extras
                 ;;
-            1)  logger boxline "Skipping extras installs" ;;
+            1)  boxline "Skipping extras installs" ;;
         esac
     #fi
 }
 
 userinstall(){
-
+# TODO: modify this function to accept a user as an argument and call it from globalinstall
     # Create install directory under user's home directory
     run mkdir -p ${installdir}
 
@@ -335,7 +345,7 @@ userinstall(){
     fi
 
     # Copy functions first
-    install-file ${rundir}/PRbL/functions ${installdir}
+    install-functions
 
     # Copy bashrc scripts to home folder
     install-dir ${rundir}/lib/skel/ $HOME
@@ -343,9 +353,9 @@ userinstall(){
     # Check for dependent applications and warn user if any are missing
     if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
-        echo -e "Missing utilities:"
-        echo -e "${bins_missing[@]}"
-        echo -e "After this installer completes, run:"
+        boxlinelog "Missing utilities:"
+        boxlinelog "${bins_missing[@]}"
+        boxlinelog "After this installer completes, run:"
         boxseparator
         echo -en "\n${lbl}sudo apt install -y ${bins_missing[@]}\n${dfl}"
         boxborder "Press 'Enter' key when ready to proceed"
@@ -357,7 +367,7 @@ userinstall(){
 
     # If vim is installed, add config files for colorization and expandtab
     if [[ $viminstall != null ]] ; then
-        mkdir -p ${HOME}/.vim/colors
+        run mkdir -p ${HOME}/.vim/colors
         install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors
         take-backup $HOME/.vimrc
         cp $rundir/lib/vimfiles/vimrc.local $rundir/lib/vimfiles/.vimrc
@@ -383,7 +393,9 @@ userinstall(){
     #fi
     #clear
 
+    # launch extra installs
     extras-menu
+
     if [[ $dry_run != true ]] ; then
         boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
     fi
@@ -393,23 +405,22 @@ globalinstall(){
     # Create global install directory
     run mkdir -p ${globalinstalldir}
 
-    # Copy functions
-    install-file ${rundir}/PRbL/functions ${globalinstalldir}/functions
+    install-functions
     export prbl_functions="${globalinstalldir}/functions"
 
     # Check for dependent applications and offer to install
     if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
-        logger "Missing utilities:"
-        logger "${bins_missing[@]}"
-        logger "Would you like to install them? (this will require root password)"
+        boxlinelog "Missing utilities:"
+        boxlinelog "${bins_missing[@]}"
+        boxlinelog "Would you like to install them? (this will require root password)"
         utilsmissing_menu=(
         "$(boxline "${green_check} Yes")"
         "$(boxline "${red_x} No")"
         )
         case `select_opt "${utilsmissing_menu[@]}"` in
-            0)  boxborder "${grn}Installing dependencies...${dfl}"
-                spin $(install-deps)
+            0)  boxlinelog "${grn}Installing dependencies...${dfl}"
+                install-deps
                 ;;
             1)  warn "Dependent Utilities missing: $bins_missing" ;;
         esac
