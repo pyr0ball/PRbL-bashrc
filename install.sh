@@ -281,7 +281,7 @@ install-deps(){
     boxborder "Installing packages $packages"
     if [[ dry_run != true ]] ; then
         # using a spinner function block to track installation progress
-        for $_package in $packages ; do 
+        for _package in $packages ; do 
             sudo apt-get install -y $_package
         done
     else
@@ -405,7 +405,7 @@ userinstall(){
 
 globalinstall(){
     # Create global install directory
-    run mkdir -p ${globalinstalldir}
+    run mkdir -p ${installdir}
 
     install-functions
     export prbl_functions="${globalinstalldir}/functions"
