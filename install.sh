@@ -278,15 +278,12 @@ install-dir() {
 }
 
 install-deps(){
-    boxborder "Installing packages $packages"
-    if [[ dry_run != true ]] ; then
-        # using a spinner function block to track installation progress
-        for _package in $packages ; do 
-            sudo apt-get install -y $_package
-        done
-    else
-        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
-    fi
+    #find-pmgr
+    boxborder "Installing packages ${packages[@]}"
+    for _package in ${packages[@]} ; do
+        run sudo apt-get install -y $_package
+        #run sudo $pmgr $pmgr_install_flags $_package
+    done
     # Sets dependency installed flag to true
     depsinstalled=true
 }
