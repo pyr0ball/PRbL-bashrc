@@ -197,7 +197,7 @@ install-functions(){
         install-file ${rundir}/PRbL/functions ${installdir}
     else
         curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions' > ${rundir}/functions
-        install-file ${rundir}/functions ${installdir}/functions
+        install-file ${rundir}/functions ${installdir}
     fi  
 }
 
