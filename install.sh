@@ -279,11 +279,13 @@ install-dir() {
 
 install-deps(){
     boxborder "Installing packages $packages"
-    if [[ dry_run == true ]] ; then
-        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
-    else
+    if [[ dry_run != true ]] ; then
         # using a spinner function block to track installation progress
-        spin "for $_package in $packages ; do sudo apt-get install -y $_package ; done"
+        for $_package in $packages ; do 
+            sudo apt-get install -y $_package
+        done
+    else
+        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
     fi
     # Sets dependency installed flag to true
     depsinstalled=true
