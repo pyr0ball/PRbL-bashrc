@@ -295,9 +295,11 @@ install-extras(){
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             if [[ $dry_run != true ]] ; then
-                bash "$extra -i"
+                run "${escape_dir}/extras/$extra -i"
             else
-                bash "$extra -D"
+                dry_run=false
+                run "${escape_dir}/extras/$extra -D"
+                dry_run=true
             fi
         fi
     done
