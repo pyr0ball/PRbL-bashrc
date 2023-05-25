@@ -3,6 +3,7 @@
 
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
+script_title="${grn}Go${blu}la${red}n${ylw}g${dfl}"
 rundir="${BASH_SOURCE[0]%/*}"
 sys_arch=$(uname -m)
 
@@ -32,8 +33,8 @@ pip_packages=()
 
 repo_packages=()
 
-codedog_bashrc="# CodeDog system path setup
-export PATH=\"\$PATH:\$HOME/devl/CodeDog\"
+codedog_bashrc="# Golang system path setup
+export PATH=\"\$PATH:/usr/local/go/bin/\"
 "
 
 strip-html-tags() {
@@ -94,6 +95,7 @@ dry-run-report(){
 install(){
     local _golang_html=$(curl -ks "https://go.dev/dl/" | grep linux-amd64 | grep 1.19 | head -n 1)
     local golang_current=$(strip-html-tags "$_golang_html")
+    golang_current=$(echo "$golang_current" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     export tmp_dir=`mktemp -d /tmp/selfextract.XXXXXX`
     run wget "https://go.dev/dl/${golang_current}" -O $tmp_dir/$golang_current
     run sudo rm -rf /usr/local/go
@@ -128,13 +130,13 @@ usage(){
 
 case $1 in
     -i | --install)
-        install && success " [${lbl}Slip${gry}Stream ${lyl}Installed${dfl}]"
+        install && success " [${script_title} ${lyl}Installed${dfl}]"
         ;;
     -r | --remove)
-        remove && success " [${lbl}Slip${gry}Stream ${lyl}Removed${dfl}]"
+        remove && success " [${script_title} ${lyl}Removed${dfl}]"
         ;;
     -d | --dependencies)
-        install-deps && success "${lbl}Slip${gry}Stream ${dfl} Dependencies installed!"
+        install-deps && success "${script_title} ${dfl} Dependencies installed!"
         ;;
     -D | --dry-run)
         export dry_run=true
@@ -142,18 +144,18 @@ case $1 in
         dry-run-report
         usage
         unset dry_run
-        success "${lbl}Slip${gry}Stream ${lyl}Installer Dry-Run Complete!${dfl}"
+        success "${script_title} ${lyl}Installer Dry-Run Complete!${dfl}"
         ;;
     -u | --update)
         export update_run=true
-        update && unset update_run && success " [${lbl}Slip${gry}Stream ${lyl}Updated${dfl}]"
+        update && unset update_run && success " [${script_title} ${lyl}Updated${dfl}]"
         ;;
     -f | --force)
         remove-arbitrary
-        install && success " [${lbl}Slip${blu}Stream ${lyl}Installed${dfl}]"
+        install && success " [${script_title} ${lyl}Installed${dfl}]"
         ;;
     -F | --force-remove)
-        remove-arbitrary && success " [${lbl}Slip${gry}Stream ${lyl}Force-Removed${dfl}]"
+        remove-arbitrary && success " [${script_title} ${lyl}Force-Removed${dfl}]"
         ;;
     -h | --help)
         usage
