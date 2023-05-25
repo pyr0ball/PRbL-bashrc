@@ -39,7 +39,7 @@ export PATH=\"\$PATH:/usr/local/go/bin/\"
 
 strip-html-tags() {
   local input="$1"
-  local stripped=$(echo "$input" | sed 's/<[^>]*>//g')
+  local stripped=$(echo "$input" | sed 's/<[^>]*>//g' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   echo "$stripped"
 }
 
@@ -95,18 +95,18 @@ dry-run-report(){
 install(){
     local _golang_html=$(curl -ks "https://go.dev/dl/" | grep linux-amd64 | grep 1.19 | head -n 1)
     local golang_current=$(strip-html-tags "$_golang_html")
-    golang_current=$(echo "$golang_current" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    #golang_current=$(echo "$golang_current" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     export tmp_dir=`mktemp -d /tmp/selfextract.XXXXXX`
     run wget "https://go.dev/dl/${golang_current}" -O $tmp_dir/$golang_current
     run sudo rm -rf /usr/local/go
-    run tar -C /usr/local -xzf $tmp_dir/$golang_current
+    run sudo tar -C /usr/local -xzf $tmp_dir/$golang_current
     if [ ! -f $HOME/.bashrc.d/11-golang.bashrc ] ; then
         run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/11-golang.bashrc && \
             boxborder ".bashrc.d/11-golang.bashrc installed..."
     fi
     export PATH=$PATH:/usr/local/go/bin
     if [ ! -f /usr/bin/go ] ; then
-        run sudo ln -s /usr/bin/go /usr/local/go/bin/go && \
+        run sudo ln -s /usr/local/go/bin/go /usr/bin/go && \
             boxborder "golang symlink created at /usr/bin/go"
     fi
 }
