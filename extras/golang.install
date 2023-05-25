@@ -32,8 +32,8 @@ pip_packages=()
 
 repo_packages=()
 
-codedog_bashrc="# CodeDog system path setup
-export PATH=\"\$PATH:\$HOME/devl/CodeDog\"
+go_bashrc="# Golang system path setup
+PATH=\$PATH:/usr/local/go/bin
 "
 
 strip-html-tags() {
@@ -99,7 +99,7 @@ install(){
     run sudo rm -rf /usr/local/go
     run tar -C /usr/local -xzf $tmp_dir/$golang_current
     if [ ! -f $HOME/.bashrc.d/11-golang.bashrc ] ; then
-        run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/11-golang.bashrc && \
+        run $(echo -e "$go_bashrc" >> $HOME/.bashrc.d/11-golang.bashrc) && \
             boxborder ".bashrc.d/11-golang.bashrc installed..."
     fi
     export PATH=$PATH:/usr/local/go/bin
