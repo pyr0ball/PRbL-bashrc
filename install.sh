@@ -485,6 +485,7 @@ globalinstall(){
 }
 
 remove(){
+    # Need to build a filter to ignore home directories, root, etc
     if [ -f $rundir/installed_files.list ] ; then
         _installed_list=($(cat $rundir/installed_files.list))
     fi
