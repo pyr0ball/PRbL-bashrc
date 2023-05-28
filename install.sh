@@ -219,7 +219,7 @@ take-backup(){
     if [[ $update_run != true ]] ; then
         # Check if a backup file or symbolic link already exists
         if [[ -e "$name.bak" || -L "$name.bak" ]]; then
-            run boxline " $name.bak backup already exists"
+            boxline " $name.bak backup already exists"
         else
             # Check if the file is a hidden file (starts with a dot)
             if [[ "$name" == .* ]]; then
