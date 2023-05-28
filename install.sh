@@ -4,15 +4,14 @@
 ###################################################################
 
 # initial vars
-VERSION=2.3.3
-scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
+VERSION=2.4.0
+prbl_functons_req_ver=1.6.0
+scripttitle=$(center "Pyr0ball's Reductive Bash Library Installer - v$VERSION")
 
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
-
-# Source PRbL functions from installer directory
 # Source PRbL Functions locally or retrieve from online
 # TODO: Add version check to this
 if [ ! -z $prbl_functions ] ; then
@@ -24,9 +23,23 @@ else
         source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
     fi
 fi
+
+# check PRbL functions version
+# TODO: the checks here are a bit backwards, needs optimization
+if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
+  warn "PRbL functions installed are lower than recommended ($prbl_functons_req_ver)"
+  warn "Some features may not work as expected"
+else
+  if ! vercomp 1 1 ; then
+    warn "PRbL functions library is older than 1.1.3, please update!"
+    warn "Some features may not work as expected"
+  fi
+fi
+
 rundir_absolute=$(pushd $rundir ; pwd ; popd)
 escape_dir=$(printf %q "${rundir_absolute}")
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
+
 #-----------------------------------------------------------------#
 # Script-specific Parameters
 #-----------------------------------------------------------------#
