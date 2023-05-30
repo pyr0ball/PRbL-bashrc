@@ -327,10 +327,10 @@ boxline ""
 for((i=0; i<"${#adapters[@]}"; i++ )); do
   if [[ $show_disconnected != true ]] ; then
     if [[ ${ifups[$i]} == up ]] ; then
-	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
     fi
   else
-    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
   fi
 done
 boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
@@ -343,9 +343,9 @@ boxline "	System Load: ${load_averages}"
 boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${dfl}"
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	${unl}Disk Info:${dfl}"
-boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
+boxline "${unl}$(printf ' |%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
 for((i=0; i<"${#logicals[@]}"; i++ )); do
-  boxline "\t$(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
+  boxline " $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
 if [[ "$need_updates" == "true" ]] ; then
