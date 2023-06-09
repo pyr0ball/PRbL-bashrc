@@ -93,7 +93,24 @@ dry-run-report(){
 }
 
 install(){
-    local _golang_html=$(curl -ks "https://go.dev/dl/" | grep linux-amd64 | grep 1.19 | head -n 1)
+    if ! check-deps ; then
+        warn "Some of the utilities needed by this script are missing"
+        boxlinelog "Missing utilities:"
+        boxlinelog "${bins_missing[@]}"
+        boxlinelog "Would you like to install them? (this will require root password)"
+        utilsmissing_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${utilsmissing_menu[@]}"` in
+            0)  boxlinelog "${grn}Installing dependencies...${dfl}"
+                install-deps
+                ;;
+            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+        esac
+    fi
+
+    local _golang_html=$(/usr/bin/curl -ks "https://go.dev/dl/" | grep linux-amd64 | grep 1.19 | head -n 1)
     local golang_current=$(strip-html-tags "$_golang_html")
     #golang_current=$(echo "$golang_current" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     export tmp_dir=`mktemp -d /tmp/selfextract.XXXXXX`
