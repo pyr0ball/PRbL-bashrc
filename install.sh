@@ -203,7 +203,7 @@ install-functions(){
 
 take-backup(){
     name="$1"
-    if [[ $update_run != true ]] ; then
+    # if [[ $update_run != true ]] ; then
         # Check if a backup file or symbolic link already exists
         if [[ -e "$name.bak" || -L "$name.bak" ]]; then
             run boxline " $name.bak backup already exists"
@@ -219,11 +219,11 @@ take-backup(){
             # Copy the file to the backup file with preservation of file attributes
             run cp -p "$name" "$backup_name"
             # Add the original file to the list of backup files
-            backup_files+=("$name")
+            run boxline " $name.bak backup already exists"
             # Log the original file name to the backup file list file
             run echo "$name" >> "$rundir/backup_files.list"
         fi
-    fi
+    # fi
 }
 
 restore-backup(){
@@ -232,7 +232,7 @@ restore-backup(){
 		run cp "$file".bak $file
 		run echo "$file is restored"
 	done
-    backup_files=()
+        run boxline " $name.bak backup already exists"
     if [ -f $rundir/backup_files.list ] ; then
         run rm $rundir/backup_files.list
     fi
@@ -306,13 +306,13 @@ install-extras(){
     for extra in "${_extras[@]}"; do
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
-            if [[ $dry_run != true ]] ; then
+            # if [[ $dry_run != true ]] ; then
                 run "${escape_dir}/extras/$extra -i"
-            else
-                dry_run=false
-                run "${escape_dir}/extras/$extra -D"
-                dry_run=true
-            fi
+            # else
+            #     dry_run=false
+            #     run "${escape_dir}/extras/$extra -D"
+            #     dry_run=true
+            # fi
         fi
     done
 }
@@ -350,11 +350,17 @@ userinstall(){
         warn "Some of the utilities needed by this script are missing"
         boxlinelog "Missing utilities:"
         boxlinelog "${bins_missing[@]}"
-        boxlinelog "After this installer completes, run:"
-        boxseparator
-        echo -en "\n${lbl}sudo apt install -y ${bins_missing[@]}\n${dfl}"
-        boxborder "Press 'Enter' key when ready to proceed"
-        read proceed
+        boxlinelog "Would you like to install them? (this will require root password)"
+        utilsmissing_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${utilsmissing_menu[@]}"` in
+            0)  boxlinelog "${grn}Installing dependencies...${dfl}"
+                install-deps
+                ;;
+            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+        esac
     fi
 
     # Check for and parse the installed vim version
