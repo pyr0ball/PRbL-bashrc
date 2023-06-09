@@ -1,6 +1,7 @@
 #!/bin/bash
 # CodeDog Bootstrap installer script
-
+# To run this script without cloning or downloading anything:
+# bash <(curl -ks 'https://github.com/pyr0ball/PRbL-bashrc/raw/main/extras/Slipstream.install')
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"

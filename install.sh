@@ -339,15 +339,6 @@ userinstall(){
     # Create install directory under user's home directory
     run mkdir -p ${installdir}
 
-    # Check if functions already exist, and check if functions are out of date
-    if [ -f ${installdir}/functions ] ; then
-        # if functions are out of date, remove before installing new version
-        local installerfrev=$(cat ${rundir}/functions | grep functionsrev )
-        if [[ $(vercomp ${installerfrev##*=} $installer_functionsrev ) == 2 ]] ; then
-            run rm ${installdir}/functions
-        fi
-    fi
-
     # Copy functions first
     install-functions
 
