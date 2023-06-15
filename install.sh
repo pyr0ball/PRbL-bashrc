@@ -300,7 +300,7 @@ install-deps(){
 }
 
 install-extras(){
-    _extras=($(ls ${escape_dir}/extras/))
+    _extras=($(ls ${escape_dir}/extras/ | grep -v '*\.log' ))
     # extra_installs=$(ls ${escape_dir}/extras/)
     # for file in $extra_installs ; do
     #     _extras+=("$file")
