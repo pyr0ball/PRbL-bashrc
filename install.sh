@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.3.3
+VERSION=2.3.4
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
