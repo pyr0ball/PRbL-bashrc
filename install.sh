@@ -20,11 +20,11 @@ else
     else
         # Iterate through get commands and fall back on next if unavailable
         if command -v curl >/dev/null 2>&1; then
-            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
         elif command -v wget >/dev/null 2>&1; then
-            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
         elif command -v fetch >/dev/null 2>&1; then
-            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
         else
             echo "Error: curl, wget, and fetch commands are not available. Please install one to retrieve PRbL functions."
             exit 1
@@ -204,7 +204,7 @@ install-functions(){
     if [ -f ${rundir}/PRbL/functions ] ; then
         install-file ${rundir}/PRbL/functions ${installdir}
     else
-        curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions' > ${rundir}/functions
+        curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions' > ${rundir}/functions
         install-file ${rundir}/functions ${installdir}
     fi  
 }
@@ -524,7 +524,7 @@ update(){
     run git stash -m "$pretty_date stashing changes before update to latest"
     run git fetch && run git pull --recurse-submodules
     pushd PRbL
-        run git checkout master
+        run git checkout main
         run git pull
     popd
     install
