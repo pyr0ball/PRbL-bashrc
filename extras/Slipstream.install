@@ -15,11 +15,11 @@ else
     else
         # Iterate through get commands and fall back on next if unavailable
         if command -v curl >/dev/null 2>&1; then
-            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
         elif command -v wget >/dev/null 2>&1; then
-            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
         elif command -v fetch >/dev/null 2>&1; then
-            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
         else
             echo "Error: curl, wget, and fetch commands are not available. Please install one to retrieve PRbL functions."
             exit 1
@@ -98,7 +98,7 @@ check-deps(){
 }
 
 install-deps(){
-    logger echo "Installing packages $sys_packages"
+    logger echo "Installing packages: $sys_packages"
     for _package in ${sys_packages[@]} ; do
         run install-packages $_package
     done
@@ -106,21 +106,24 @@ install-deps(){
         pip install -y ${rundir}/requirements.txt
     else
         if [ ! -z $pip_packages ] ; then
-            pip install -y ${pip_packages[@]}
+            pip install ${pip_packages[@]}
         fi
     fi
     for _package in $prbl_packages ; do
         if [ -f ${rundir}/$_package ] ; then
             if [[ $dry_run != true ]] ; then
-                bash "${rundir}/$_package -i"
+                boxline "running extra $extra"
+                run "${rundir}/$_package -i"
             else
-                bash "${rundir}/$_package -D"
+                dry_run=false
+                run "${rundir}/$_package -D"
+                dry_run=true
             fi
         else
             if [[ $dry_run != true ]] ; then
-                run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/master/extras/$_package -i
+                run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/main/extras/$_package -i
             else
-                run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/master/extras/$_package -D
+                run-from-url https://raw.githubusercontent.com/pyr0ball/PRbL-bashrc/main/extras/$_package -D
             fi
         fi
     done
@@ -152,9 +155,9 @@ install(){
     if ! check-deps ; then
         warn "Some of the utilities needed by this install are missing"
         boxtop
-        logger echo -e "Missing utilities:"
+        logger boxline "Missing utilities:"
         for bin in ${bins_missing[@]} ; do
-            logger echo -e "${bins_missing[$bin]}"
+            logger boxline "$bin"
         done
         boxbottom
         boxborder "Would you like to install them? (this will require root password)"
