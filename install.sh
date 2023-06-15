@@ -292,27 +292,33 @@ install-deps(){
 }
 
 install-extras(){
-    _extras=()
-    extra_installs=$(ls ${escape_dir}/extras/)
-    for file in $extra_installs ; do
-        _extras+=("$file")
-    done
+    _extras=($(ls ${escape_dir}/extras/))
+    # extra_installs=$(ls ${escape_dir}/extras/)
+    # for file in $extra_installs ; do
+    #     _extras+=("$file")
+    # done
 
     boxborder "Which extras should be installed?"
-    multiselect result _extras "false"
+    for each in {1..${#_extras[@]}} ; do
+        preselect+=("false")
+    done
+    multiselect result _extras preselect
 
     # For each extra, compare input choice and apply installs
     idx=0
     for extra in "${_extras[@]}"; do
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
-            # if [[ $dry_run != true ]] ; then
+            if [[ $dry_run != true ]] ; then
+                boxline "running extra $extra"
                 run "${escape_dir}/extras/$extra -i"
-            # else
-            #     dry_run=false
-            #     run "${escape_dir}/extras/$extra -D"
-            #     dry_run=true
-            # fi
+            else
+                dry_run=false
+                run "${escape_dir}/extras/$extra -D"
+                dry_run=true
+            fi
+        # else
+        #     echo "index for $extra is ${result[idx]}"
         fi
     done
 }
