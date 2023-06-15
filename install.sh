@@ -4,26 +4,34 @@
 ###################################################################
 
 # initial vars
-VERSION=2.3.3
+VERSION=2.3.4
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
-
-# Source PRbL functions from installer directory
 # Source PRbL Functions locally or retrieve from online
-# TODO: Add version check to this
 if [ ! -z $prbl_functions ] ; then
     source $prbl_functions
 else
     if [ -f ${rundir}/functions ] ; then
         source ${rundir}/functions
     else
-        source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+        # Iterate through get commands and fall back on next if unavailable
+        if command -v curl >/dev/null 2>&1; then
+            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        elif command -v wget >/dev/null 2>&1; then
+            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        elif command -v fetch >/dev/null 2>&1; then
+            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        else
+            echo "Error: curl, wget, and fetch commands are not available. Please install one to retrieve PRbL functions."
+            exit 1
+        fi
     fi
 fi
+
 rundir_absolute=$(pushd $rundir ; pwd ; popd)
 escape_dir=$(printf %q "${rundir_absolute}")
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
@@ -196,14 +204,14 @@ install-functions(){
     if [ -f ${rundir}/PRbL/functions ] ; then
         install-file ${rundir}/PRbL/functions ${installdir}
     else
-        curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions' > ${rundir}/functions
+        curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions' > ${rundir}/functions
         install-file ${rundir}/functions ${installdir}
     fi  
 }
 
 take-backup(){
     name="$1"
-    if [[ $update_run != true ]] ; then
+    # if [[ $update_run != true ]] ; then
         # Check if a backup file or symbolic link already exists
         if [[ -e "$name.bak" || -L "$name.bak" ]]; then
             run boxline " $name.bak backup already exists"
@@ -219,11 +227,11 @@ take-backup(){
             # Copy the file to the backup file with preservation of file attributes
             run cp -p "$name" "$backup_name"
             # Add the original file to the list of backup files
-            backup_files+=("$name")
+            run boxline " $name.bak backup already exists"
             # Log the original file name to the backup file list file
             run echo "$name" >> "$rundir/backup_files.list"
         fi
-    fi
+    # fi
 }
 
 restore-backup(){
@@ -232,7 +240,7 @@ restore-backup(){
 		run cp "$file".bak $file
 		run echo "$file is restored"
 	done
-    backup_files=()
+        run boxline " $name.bak backup already exists"
     if [ -f $rundir/backup_files.list ] ; then
         run rm $rundir/backup_files.list
     fi
@@ -292,14 +300,17 @@ install-deps(){
 }
 
 install-extras(){
-    _extras=()
-    extra_installs=$(ls ${escape_dir}/extras/)
-    for file in $extra_installs ; do
-        _extras+=("$file")
-    done
+    _extras=($(ls ${escape_dir}/extras/ | grep -v 'log$'))
+    # extra_installs=$(ls ${escape_dir}/extras/)
+    # for file in $extra_installs ; do
+    #     _extras+=("$file")
+    # done
 
     boxborder "Which extras should be installed?"
-    multiselect result _extras "false"
+    for each in {1..${#_extras[@]}} ; do
+        preselect+=("false")
+    done
+    multiselect result _extras preselect
 
     # For each extra, compare input choice and apply installs
     idx=0
@@ -307,12 +318,15 @@ install-extras(){
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
             if [[ $dry_run != true ]] ; then
+                boxline "running extra $extra"
                 run "${escape_dir}/extras/$extra -i"
             else
                 dry_run=false
                 run "${escape_dir}/extras/$extra -D"
                 dry_run=true
             fi
+        # else
+        #     echo "index for $extra is ${result[idx]}"
         fi
     done
 }
@@ -339,15 +353,6 @@ userinstall(){
     # Create install directory under user's home directory
     run mkdir -p ${installdir}
 
-    # Check if functions already exist, and check if functions are out of date
-    if [ -f ${installdir}/functions ] ; then
-        # if functions are out of date, remove before installing new version
-        local installerfrev=$(cat ${rundir}/functions | grep functionsrev )
-        if [[ $(vercomp ${installerfrev##*=} $installer_functionsrev ) == 2 ]] ; then
-            run rm ${installdir}/functions
-        fi
-    fi
-
     # Copy functions first
     install-functions
 
@@ -359,11 +364,17 @@ userinstall(){
         warn "Some of the utilities needed by this script are missing"
         boxlinelog "Missing utilities:"
         boxlinelog "${bins_missing[@]}"
-        boxlinelog "After this installer completes, run:"
-        boxseparator
-        echo -en "\n${lbl}sudo apt install -y ${bins_missing[@]}\n${dfl}"
-        boxborder "Press 'Enter' key when ready to proceed"
-        read proceed
+        boxlinelog "Would you like to install them? (this will require root password)"
+        utilsmissing_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${utilsmissing_menu[@]}"` in
+            0)  boxlinelog "${grn}Installing dependencies...${dfl}"
+                install-deps
+                ;;
+            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+        esac
     fi
 
     # Check for and parse the installed vim version
@@ -513,7 +524,7 @@ update(){
     run git stash -m "$pretty_date stashing changes before update to latest"
     run git fetch && run git pull --recurse-submodules
     pushd PRbL
-        run git checkout master
+        run git checkout main
         run git pull
     popd
     install

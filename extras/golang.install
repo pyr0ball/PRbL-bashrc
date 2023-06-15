@@ -6,6 +6,7 @@ scriptname="${BASH_SOURCE[0]##*/}"
 script_title="${grn}Go${blu}la${red}n${ylw}g${dfl}"
 rundir="${BASH_SOURCE[0]%/*}"
 sys_arch=$(uname -m)
+req_go_ver="1.19"
 
 golang_bashrc="# Golang system path setup
 export PATH=\$PATH:/usr/local/go/bin
@@ -15,7 +16,21 @@ export PATH=\$PATH:/usr/local/go/bin
 if [ ! -z $prbl_functions ] ; then
     source $prbl_functions
 else
-    source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+    if [ -f ${rundir}/functions ] ; then
+        source ${rundir}/functions
+    else
+        # Iterate through get commands and fall back on next if unavailable
+        if command -v curl >/dev/null 2>&1; then
+            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        elif command -v wget >/dev/null 2>&1; then
+            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        elif command -v fetch >/dev/null 2>&1; then
+            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        else
+            echo "Error: curl, wget, and fetch commands are not available. Please install one to retrieve PRbL functions."
+            exit 1
+        fi
+    fi
 fi
 
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
@@ -63,6 +78,17 @@ check-deps(){
     fi
 }
 
+check-go(){
+    if [[ -x /usr/bin/go ]] ; then
+        # TODO: Add version checking rather than just whether the binary is executible
+        #inst_go_ver=$(/usr/bin/go version | awl {'print $3'} | cut -c 3-)
+        #if [[ $(vercomp )]]
+        return 0
+    else
+        return 1
+    fi
+}
+
 install-deps(){
     logger echo "Installing packages $sys_packages"
     run "for $_package in $sys_packages ; do sudo apt-get install -y $_package ; done"
@@ -93,22 +119,45 @@ dry-run-report(){
 }
 
 install(){
-    local _golang_html=$(curl -ks "https://go.dev/dl/" | grep linux-amd64 | grep 1.19 | head -n 1)
+    if check-go ; then
+        boxline "golang already installed!"
+        return 0
+    fi
+    if ! check-deps ; then
+        warn "Some of the utilities needed by this script are missing"
+        boxlinelog "Missing utilities:"
+        boxlinelog "${bins_missing[@]}"
+        boxlinelog "Would you like to install them? (this will require root password)"
+        utilsmissing_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${utilsmissing_menu[@]}"` in
+            0)  boxlinelog "${grn}Installing dependencies...${dfl}"
+                install-deps
+                ;;
+            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+        esac
+    fi
+
+    local _golang_html=$(/usr/bin/curl -ks "https://go.dev/dl/" | grep $sys_arch | grep $req_go_ver | head -n 1)
     local golang_current=$(strip-html-tags "$_golang_html")
     #golang_current=$(echo "$golang_current" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     export tmp_dir=`mktemp -d /tmp/selfextract.XXXXXX`
+    logger boxborder "Pulling golang v$req_go_ver for installation"
     run wget "https://go.dev/dl/${golang_current}" -O $tmp_dir/$golang_current
     run sudo rm -rf /usr/local/go
     run sudo tar -C /usr/local -xzf $tmp_dir/$golang_current
     if [ ! -f $HOME/.bashrc.d/11-golang.bashrc ] ; then
         run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/11-golang.bashrc && \
-            boxborder ".bashrc.d/11-golang.bashrc installed..."
+            logger boxborder ".bashrc.d/11-golang.bashrc installed..."
     fi
     export PATH=$PATH:/usr/local/go/bin
-    if [ ! -f /usr/bin/go ] ; then
+    if [ ! -x /usr/bin/go ] ; then
         run sudo ln -s /usr/local/go/bin/go /usr/bin/go && \
-            boxborder "golang symlink created at /usr/bin/go"
+            logger boxborder "golang symlink created at /usr/bin/go"
     fi
+    return 0
 }
 
 # Function for displaying the usage of this script
