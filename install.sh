@@ -11,19 +11,27 @@ scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
-
-# Source PRbL functions from installer directory
 # Source PRbL Functions locally or retrieve from online
-# TODO: Add version check to this
 if [ ! -z $prbl_functions ] ; then
     source $prbl_functions
 else
     if [ -f ${rundir}/functions ] ; then
         source ${rundir}/functions
     else
-        source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+        # Iterate through get commands and fall back on next if unavailable
+        if command -v curl >/dev/null 2>&1; then
+            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+        elif command -v wget >/dev/null 2>&1; then
+            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+        elif command -v fetch >/dev/null 2>&1; then
+            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/master/functions')
+        else
+            echo "Error: curl, wget, and fetch commands are not available. Please install one to retrieve PRbL functions."
+            exit 1
+        fi
     fi
 fi
+
 rundir_absolute=$(pushd $rundir ; pwd ; popd)
 escape_dir=$(printf %q "${rundir_absolute}")
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
