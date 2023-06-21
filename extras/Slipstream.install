@@ -1,8 +1,9 @@
 #!/bin/bash
 # CodeDog Bootstrap installer script
 # To run this script without cloning or downloading anything:
-# bash <(curl -ks 'https://github.com/pyr0ball/PRbL-bashrc/raw/main/extras/Slipstream.install')
+# curl -H 'Cache-Control: no-cache' -kLs 'https://github.com/pyr0ball/PRbL-bashrc/raw/main/extras/Slipstream.install' | bash -s -- -i
 # Bash expansions to get the name and location of this script when run
+installdir="$HOME/.local/share/s3dk"
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
@@ -28,7 +29,6 @@ else
 fi
 
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
-installdir="$HOME/devl"
 
 # Dependencies
 sys_packages=(
@@ -43,9 +43,9 @@ pip_packages=(
 )
 
 repo_packages=(
-    https://github.com/BruceDLong/CodeDog.git
-    https://github.com/BruceDLong/Proteus.git
-    https://github.com/BruceDLong/Slipstream.git
+    BruceDLong/CodeDog
+    BruceDLong/Proteus
+    BruceDLong/Slipstream
 )
 
 prbl_packages=(
@@ -174,12 +174,30 @@ install(){
     fi
     run mkdir -p $installdir
     pushd $installdir
-        for repo in ${repo_packages[@]} ; do
-            clone-repo $repo
+        for repo in "${repo_packages[@]}"; do
+            if ! check-git-repository "repositories/${repo#*/}"; then
+                if [ -d "repositories/${repo#*/}" ] ; then
+                    warn "Existing repo ${repo#*/} is broken..."
+                    return 1
+                else
+                    logger echo "Cloning ${repo} into ${installdir}/repositories/${repo#*/}"
+                    clone-repo "https://github.com/$repo" "${installdir}/repositories/${repo#*/}"
+                fi
+            else
+                pushd "repositories/${repo#*/}"
+                if [[ ${VERSIONS[${repo#*/}]} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                    echo "Version tag detected: ${VERSIONS[${repo#*/}]}"
+                    git checkout "${VERSIONS[${repo#*/}]}"
+                else
+                    echo "Commit hash detected: ${VERSIONS[${repo#*/}]}"
+                    git checkout -q "${VERSIONS[${repo#*/}]}"
+                fi
+                popd
+            fi
         done
     popd
     pushd $installdir/Proteus
-        run sudo python3 ruleMgr.py
+        run sudo python3 ruleMgr.py && logger echo "Proteus Initialized..."
     popd
     pushd $installdir/Slipstream
         run $installdir/CodeDog/codeDog ./Slipstream.dog && logger echo "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
