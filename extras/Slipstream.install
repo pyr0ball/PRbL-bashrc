@@ -184,23 +184,23 @@ install(){
                     clone-repo "https://github.com/$repo" "${installdir}/repositories/${repo#*/}"
                 fi
             else
-                pushd "repositories/${repo#*/}"
+                pushd "${installdir}/repositories/${repo#*/}"
                 if [[ ${VERSIONS[${repo#*/}]} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                     echo "Version tag detected: ${VERSIONS[${repo#*/}]}"
                     git checkout "${VERSIONS[${repo#*/}]}"
                 else
-                    echo "Commit hash detected: ${VERSIONS[${repo#*/}]}"
+                    echo "Branch Name / Commit hash detected: ${VERSIONS[${repo#*/}]}"
                     git checkout -q "${VERSIONS[${repo#*/}]}"
                 fi
                 popd
             fi
         done
     popd
-    pushd $installdir/Proteus
+    pushd $installdir/repositories/Proteus
         run sudo python3 ruleMgr.py && logger echo "Proteus Initialized..."
     popd
-    pushd $installdir/Slipstream
-        run $installdir/CodeDog/codeDog ./Slipstream.dog && logger echo "Slipstream app built at ${installdir}/Slipstream/LinuxBuild"
+    pushd $installdir/repositories/Slipstream
+        run $installdir/repositories/CodeDog/codeDog ./Slipstream.dog && logger echo "Slipstream app built at ${installdir}/repositories/Slipstream/LinuxBuild"
     popd
 }
 
