@@ -10,7 +10,7 @@
 ###############################################################
 
 quickinfo_version=2.1.0
-prbl_functons_req_ver=1.1.3
+prbl_functons_req_ver=1.6.0
 
 # Uses a wide variety of methods to check which distro this is run on
 # TODO: Add alternative handling for other environments
@@ -178,7 +178,7 @@ fi
 # TODO: optimize this to run after time delay using timestamp in settings
 set_spinner spinner19
 #spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
-read -r wan_ip < <(wget -qO- http://ipecho.net/plain \| xargs echo)
+spin read -r wan_ip < <(wget -qO- https://ident.me/)
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
@@ -246,7 +246,7 @@ fi
 # Check for release upgrade
 if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
     if [ -f /var/lib/ubuntu-release-upgrader/release-upgrade-available ] ; then
-        release_upgrade=$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)
+        release_upgrade="$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)"
     fi
 fi
 if [ "$(lsb_release -sd | cut -d ' ' -f4)" = "(development" ]; then
@@ -257,7 +257,7 @@ fi
 
 # Check for fsck message
 if [ -x /usr/lib/update-notifier/update-motd-fsck-at-reboot ]; then
-    fsck_needed=`exec /usr/lib/update-notifier/update-motd-fsck-at-reboot`
+    fsck_needed="$(exec /usr/lib/update-notifier/update-motd-fsck-at-reboot)"
 fi
 
 ################################
@@ -324,10 +324,10 @@ boxline ""
 boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
 # Echo out network arrays
-for((i=0; i<"${#adapters[@]}"; i++ )); do
+for ((i=0; i<"${#adapters[@]}"; i++ )); do
   if [[ $show_disconnected != true ]] ; then
     if [[ ${ifups[$i]} == up ]] ; then
-	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl  |  ${blu}${macs[$i]}${dfl}"
+	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
     fi
   else
     boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
@@ -344,8 +344,8 @@ boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${d
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	${unl}Disk Info:${dfl}"
 boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
-for((i=0; i<"${#logicals[@]}"; i++ )); do
-  boxline " $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
+for ((i=0; i<"${#logicals[@]}"; i++ )); do
+  boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
 if [[ "$need_updates" == "true" ]] ; then
@@ -355,6 +355,6 @@ if [[ "$need_updates" == "true" ]] ; then
   boxline "	${release_upgrade}"
 fi
 if [ -z "${fsck_needed}" ] || [ -z "${reboot_required}" ] ; then
-  boxline "	${fsck_needed}${reboot_required}"
+  boxline "	${fsck_needed} ${reboot_required} "
 fi
 boxbottom

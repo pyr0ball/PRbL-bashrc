@@ -4,7 +4,7 @@
 ###################################################################
 
 # initial vars
-VERSION=2.3.4
+VERSION=2.3.5
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
@@ -56,7 +56,7 @@ globalinstalldir="/usr/share/prbl"
 
 # Initialize arrays for file and dependency management
 bins_missing=()
-backupFiles=()
+backup_files=()
 installed_files=()
 installed_dirs=()
 
