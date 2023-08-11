@@ -42,7 +42,8 @@ sys_packages=(
 )
 
 pip_packages=(
-    pyparsing
+    pyparsing==3.0.9
+    gitpython
 )
 
 repo_packages=(
