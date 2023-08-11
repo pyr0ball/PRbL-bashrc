@@ -344,7 +344,7 @@ boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${d
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	${unl}Disk Info:${dfl}"
 boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
-for((i=0; i<"${#logicals[@]}"; i++ )); do
+for ((i=0; i<"${#logicals[@]}"; i++ )); do
   boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
