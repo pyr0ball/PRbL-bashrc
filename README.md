@@ -16,7 +16,7 @@ This installer sets up a number of bash-enhancing features:
 - A pluggable environment configuration via ~/.bashrc.d/
 - An informative terminal login splash page
 
-Currently this installer only handles debian/ubuntu-based distros.
+Currently this installer only handles bash-like environments.
 
 Planned features:
 
