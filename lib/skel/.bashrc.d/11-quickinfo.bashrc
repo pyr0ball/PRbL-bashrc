@@ -10,7 +10,7 @@
 ###############################################################
 
 quickinfo_version=2.1.0
-prbl_functons_req_ver=1.1.3
+prbl_functons_req_ver=1.6.0
 
 # Uses a wide variety of methods to check which distro this is run on
 # TODO: Add alternative handling for other environments
@@ -178,7 +178,7 @@ fi
 # TODO: optimize this to run after time delay using timestamp in settings
 set_spinner spinner19
 #spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
-read -r wan_ip < <(wget -qO- http://ipecho.net/plain \| xargs echo)
+spin read -r wan_ip < <(wget -qO- https://ident.me/)
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
@@ -324,7 +324,7 @@ boxline ""
 boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
 # Echo out network arrays
-for((i=0; i<"${#adapters[@]}"; i++ )); do
+for ((i=0; i<"${#adapters[@]}"; i++ )); do
   if [[ $show_disconnected != true ]] ; then
     if [[ ${ifups[$i]} == up ]] ; then
 	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
@@ -355,6 +355,6 @@ if [[ "$need_updates" == "true" ]] ; then
   boxline "	${release_upgrade}"
 fi
 if [ -z "${fsck_needed}" ] || [ -z "${reboot_required}" ] ; then
-  boxline "	${fsck_needed}${reboot_required}"
+  boxline "	${fsck_needed} ${reboot_required} "
 fi
 boxbottom
