@@ -56,7 +56,7 @@ globalinstalldir="/usr/share/prbl"
 
 # Initialize arrays for file and dependency management
 bins_missing=()
-backupFiles=()
+backup_files=()
 installed_files=()
 installed_dirs=()
 

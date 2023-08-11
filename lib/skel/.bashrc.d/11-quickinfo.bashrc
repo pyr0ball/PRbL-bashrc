@@ -246,7 +246,7 @@ fi
 # Check for release upgrade
 if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
     if [ -f /var/lib/ubuntu-release-upgrader/release-upgrade-available ] ; then
-        release_upgrade=$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)
+        release_upgrade="$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)"
     fi
 fi
 if [ "$(lsb_release -sd | cut -d ' ' -f4)" = "(development" ]; then
@@ -257,7 +257,7 @@ fi
 
 # Check for fsck message
 if [ -x /usr/lib/update-notifier/update-motd-fsck-at-reboot ]; then
-    fsck_needed=`exec /usr/lib/update-notifier/update-motd-fsck-at-reboot`
+    fsck_needed="$(exec /usr/lib/update-notifier/update-motd-fsck-at-reboot)"
 fi
 
 ################################
@@ -327,10 +327,10 @@ boxline ""
 for((i=0; i<"${#adapters[@]}"; i++ )); do
   if [[ $show_disconnected != true ]] ; then
     if [[ ${ifups[$i]} == up ]] ; then
-	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
     fi
   else
-    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl}\t|  ${blu}${macs[$i]}${dfl}"
+    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
   fi
 done
 boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
@@ -345,7 +345,7 @@ boxline "	Memory used/total: ${mem_usage}"
 boxline "	${unl}Disk Info:${dfl}"
 boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
 for((i=0; i<"${#logicals[@]}"; i++ )); do
-  boxline "\t$(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
+  boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
 if [[ "$need_updates" == "true" ]] ; then
