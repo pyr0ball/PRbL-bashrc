@@ -277,7 +277,7 @@ declare -a macs=()
 declare -a ifups=()
 for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
   adapters+=($device)
-  _ip=$(ip -f inet -o addr show $device | cut -d\  -f 7 | cut -d/ -f 1 | head -n 1)
+  _ip=$(ip -o -f inet addr show $device | awk '{print $4}' | cut -d/ -f 1 | head -n 1)
   if valid-ip $_ip ; then
     ips+=("$_ip")
     ifups+=("up")
@@ -324,7 +324,7 @@ boxline ""
 boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
 boxline ""
 # Echo out network arrays
-for ((i=0; i<"${#adapters[@]}"; i++ )); do
+for ((i=0; i<"${#adapters[@]}"; i++ )) ; do
   if [[ $show_disconnected != true ]] ; then
     if [[ ${ifups[$i]} == up ]] ; then
 	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
@@ -344,7 +344,7 @@ boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${d
 boxline "	Memory used/total: ${mem_usage}"
 boxline "	${unl}Disk Info:${dfl}"
 boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
-for ((i=0; i<"${#logicals[@]}"; i++ )); do
+for ((i=0; i<"${#logicals[@]}" ; i++ )) ; do
   boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
 done
 boxline ""
