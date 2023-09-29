@@ -309,8 +309,8 @@ done
 declare -a logicals=()
 declare -a mounts=()
 declare -a usages=()
-declare -a freespaces=()
-diskinfo=$(/bin/df -h | grep "$allowed_disk_prefixes" | grep -v "$disallowed_disks")
+declare -a freespaces=() $allo
+diskinfo=$(/bin/df -h | grep "$allowed_disk_prefixes_string" | grep -v "$disallowed_disk_prefixes_string")
 logicals=($(cut -d ' ' -f1 <<< "${diskinfo}"))
 mounts=($(awk '{print $6}' <<< "${diskinfo}"))
 usages=($(awk '{print $5}' <<< "${diskinfo}"))
