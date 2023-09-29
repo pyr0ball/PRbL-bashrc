@@ -12,45 +12,6 @@
 quickinfo_version=2.1.0
 prbl_functons_req_ver=1.6.0
 
-# Uses a wide variety of methods to check which distro this is run on
-# TODO: Add alternative handling for other environments
-if type lsb_release >/dev/null 2>&1; then
-  # linuxbase.org
-  OS=$(lsb_release -si)
-  VER=$(lsb_release -sr)
-elif [ -f /etc/debian_version ]; then
-  # Older Debian/Ubuntu/etc.
-  OS=Debian
-  VER=$(cat /etc/debian_version)
-elif [ -f /etc/os-release ]; then
-  # freedesktop.org and systemd
-  . /etc/os-release
-  OS=$NAME
-  VER=$VERSION_ID
-elif [ -f /etc/lsb-release ]; then
-  # For some versions of Debian/Ubuntu without lsb_release command
-  . /etc/lsb-release
-  OS=$DISTRIB_ID
-  VER=$DISTRIB_RELEASE
-elif [ -f /etc/debian_version ]; then
-  # Older Debian/Ubuntu/etc.
-  OS=Debian
-  VER=$(cat /etc/debian_version)
-elif [ -f /etc/SuSe-release ]; then
-  # Older SuSE/etc.
-  ...
-elif [ -f /etc/redhat-release ]; then
-  # Older Red Hat, CentOS, etc.
-  ...
-else
-  # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
-  OS=$(uname -s)
-  VER=$(uname -r)
-fi
-
-
-# If running on login as a bashrc, the above variables will not give this script's data
-# Failover hardcoded settings location for now if running from login environment
 # TODO: Need to re-test after v2.2.x
 
 ### TODO: This implementation is still broken. context for location breaks during login
@@ -62,7 +23,10 @@ fi
 #   if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"] ; then
 #     settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
 #   else
-    # default quickinfo bashrc Preferences
+
+    ########################################
+    # Default quickinfo bashrc Preferences #
+    ########################################
 
     # Disable run on non-interactive sessions (set true to disable)
     interactive_only=false
@@ -77,25 +41,76 @@ fi
     filtered_adapters="lo"
 
     # Disks
-    # separate disk types with '\|' ex. "sd\|nvme"
-    allowed_disk_prefixes="sd\|md\|mapper\|nvme\|mmcblk\|root"
-    disallowed_disks="boot"
+
+    allowed_disk_prefixes=(
+      sd
+      md
+      mapper
+      nvme
+      mmcblk
+      root
+    )
+
+    disallowed_disk_prefixes=(
+      boot
+    )
+
+    #######################################################
+    # Do not change these unless you know what you're doing
+    # convert array to grep string
+    for prefix in "${allowed_disk_prefixes[@]}" ; do
+      allowed_disk_prefixes_string+="\\|$prefix"
+    done
+    # Remove the leading '\|' from the grep string
+    allowed_disk_prefixes_string="${allowed_disk_prefixes_string:2}"
+
+    # Manual regex string
+    # To use, uncomment and separate disk types with '\|' ex. "sd\|nvme"
+    # or use any other grep-compatible filtering desired
+    #allowed_disk_prefixes_string="sd\|md\|mapper\|nvme\|mmcblk\|root"
+
+
+    for prefix in "${disallowed_disk_prefixes[@]}" ; do
+      disallowed_disk_prefixes_string+="\\|$prefix"
+    done
+    disallowed_disk_prefixes_string="${allowed_disk_prefixes_string:2}"
 #   fi
 # fi
 # source $settingsfile
 
 # source PRbL functions
+# Source PRbL Functions locally or retrieve from online
 if [ ! -z $prbl_functions ] ; then
-  source $prbl_functions
+    source $prbl_functions
 else
-  # Failover if global variable is not defined. Checks for 'functions' in same location
-  echo -e "PRbL functions not defined. Check ~/.bashrc"
-  if [ -f "${BASH_SOURCE[0]%/*}/functions" ] ; then
-    source $rundir/functions
-  else
-    echo -e "local functions file also missing. Some visual elements will be missing"
-  fi
+    if [ -f ${rundir}/functions ] ; then
+        source ${rundir}/functions
+    else
+        # Iterate through get commands and fall back on next if unavailable
+        if command -v curl >/dev/null 2>&1; then
+            source <(curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        elif command -v wget >/dev/null 2>&1; then
+            source <(wget -qO- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        elif command -v fetch >/dev/null 2>&1; then
+            source <(fetch -qo- 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions')
+        else
+            echo "Error: curl, wget, and fetch commands are not available. Please install one to retrieve PRbL functions."
+            exit 1
+        fi
+    fi
 fi
+
+# if [ ! -z $prbl_functions ] ; then
+#   source $prbl_functions
+# else
+#   # Failover if global variable is not defined. Checks for 'functions' in same location
+#   echo -e "PRbL functions not defined. Check ~/.bashrc"
+#   if [ -f "${BASH_SOURCE[0]%/*}/functions" ] ; then
+#     source $rundir/functions
+#   else
+#     echo -e "local functions file also missing. Some visual elements will be missing"
+#   fi
+# fi
 # Locate and import settings (shares same name with script apart from file extension)
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
