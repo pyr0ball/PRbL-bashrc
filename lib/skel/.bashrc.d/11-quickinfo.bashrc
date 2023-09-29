@@ -9,7 +9,7 @@
 #           Written by Alan "pyr0ball" Weinstock              #
 ###############################################################
 
-quickinfo_version=2.1.0
+quickinfo_version=2.1.1
 prbl_functons_req_ver=1.6.0
 
 # TODO: Need to re-test after v2.2.x
@@ -309,7 +309,7 @@ done
 declare -a logicals=()
 declare -a mounts=()
 declare -a usages=()
-declare -a freespaces=() $allo
+declare -a freespaces=()
 diskinfo=$(/bin/df -h | grep "$allowed_disk_prefixes_string" | grep -v "$disallowed_disk_prefixes_string")
 logicals=($(cut -d ' ' -f1 <<< "${diskinfo}"))
 mounts=($(awk '{print $6}' <<< "${diskinfo}"))
