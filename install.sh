@@ -66,6 +66,7 @@ packages=(
     vim
     lm-sensors
     curl
+    net-tools
 )
 
 # OS distribution auto-detection
@@ -187,14 +188,18 @@ install(){
     # If script is run as root, run global install
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
-        prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions=\"${installdir}/functions\""
+        prbl_bashrc="
+        # Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+        export prbl_functions=\"${installdir}/functions\"
+        "
         globalinstall
     else
     # If user is non-root, run user-level install
         installdir="${userinstalldir}"
-        prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions=\"${installdir}/functions\""
+        prbl_bashrc="
+        # Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+        export prbl_functions=\"${installdir}/functions\"
+        "
         userinstall
     fi
 }
@@ -393,8 +398,8 @@ userinstall(){
     # Check for existing bashrc config, append if missing
     if [[ $(cat ${HOME}/.bashrc | grep -c 'bashrc.d') == 0 ]] ; then
         take-backup $HOME/.bashrc
-        run echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
-        run echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
+        echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
+        echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
     fi
 
 
