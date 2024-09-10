@@ -149,7 +149,7 @@ install(){
     run sudo rm -rf /usr/local/go
     run sudo tar -C /usr/local -xzf $tmp_dir/$golang_current
     if [ ! -f $HOME/.bashrc.d/11-golang.bashrc ] ; then
-        run echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/11-golang.bashrc && \
+        echo -e "$codedog_bashrc" >> $HOME/.bashrc.d/11-golang.bashrc && \
             logger boxborder ".bashrc.d/11-golang.bashrc installed..."
     fi
     export PATH=$PATH:/usr/local/go/bin

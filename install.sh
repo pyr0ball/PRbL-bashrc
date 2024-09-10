@@ -395,7 +395,7 @@ userinstall(){
         take-backup $HOME/.bashrc
         echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." 
         echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." 
-
+    fi
 
     # Create the quickinfo cache directory
     #mkdir -p $HOME/.quickinfo
