@@ -91,7 +91,7 @@ else
   # Failover if global variable is not defined. Checks for 'functions' in same location
   echo -e "PRbL functions not defined. Check ~/.bashrc"
   if [ -f "${BASH_SOURCE[0]%/*}/functions" ] ; then
-    source $rundir/functions
+    source ${BASH_SOURCE[0]%/*}/functions
   else
     echo -e "local functions file also missing. Some visual elements will be missing"
   fi
@@ -106,7 +106,8 @@ if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
   warn "Some features may not work as expected"
 else
   if ! vercomp 1 1 ; then
-    warn "PRbL functions library is older than 1.1.3, please update!"
+    warn "PRbL functions library is older than 1.1.3 (detection function missing), please update!"
+    warn "cd $rundir/PRbL ; git stash ; git pull ; cp ./functions $prbl_functions"
     warn "Some features may not work as expected"
   fi
 fi
@@ -178,7 +179,8 @@ fi
 # TODO: optimize this to run after time delay using timestamp in settings
 set_spinner spinner19
 #spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
-spin read -r wan_ip < <(wget -qO- https://ident.me/)
+wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo )
+#spin read -r wan_ip < <(wget -qO- https://ident.me/)
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
@@ -243,7 +245,7 @@ fi
 
 ################################
 
-# Check for release upgrade
+# Check for release upgrade on Debian
 if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
     if [ -f /var/lib/ubuntu-release-upgrader/release-upgrade-available ] ; then
         release_upgrade="$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)"
@@ -329,8 +331,8 @@ for ((i=0; i<"${#adapters[@]}"; i++ )); do
     if [[ ${ifups[$i]} == up ]] ; then
 	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
     fi
-  else
-    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
+  # else
+  #   boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
   fi
 done
 boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
