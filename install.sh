@@ -66,6 +66,7 @@ packages=(
     vim
     lm-sensors
     curl
+    net-tools
 )
 
 # OS distribution auto-detection
@@ -187,14 +188,18 @@ install(){
     # If script is run as root, run global install
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
-        prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions=\"${installdir}/functions\""
+        prbl_bashrc="
+        # Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+        export prbl_functions=\"${installdir}/functions\"
+        "
         globalinstall
     else
     # If user is non-root, run user-level install
         installdir="${userinstalldir}"
-        prbl_bashrc="# Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-export prbl_functions=\"${installdir}/functions\""
+        prbl_bashrc="
+        # Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
+        export prbl_functions=\"${installdir}/functions\"
+        "
         userinstall
     fi
 }

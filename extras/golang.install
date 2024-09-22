@@ -11,6 +11,11 @@ req_go_ver="1.19"
 golang_bashrc="# Golang system path setup
 export PATH=\$PATH:/usr/local/go/bin
 "
+if [[ $OSTYPE == linux-gnu ]] ; then
+    sys_type="linux"
+else
+    sys_type="$OSTYPE"
+fi
 
 # Source PRbL Functions locally or retrieve from online
 if [ ! -z $prbl_functions ] ; then
@@ -140,7 +145,7 @@ install(){
         esac
     fi
 
-    local _golang_html=$(/usr/bin/curl -ks "https://go.dev/dl/" | grep $sys_arch | grep $req_go_ver | head -n 1)
+    local _golang_html=$(/usr/bin/curl -ks "https://go.dev/dl/" | grep $sys_type | grep $sys_arch | grep $req_go_ver | head -n 1)
     local golang_current=$(strip-html-tags "$_golang_html")
     #golang_current=$(echo "$golang_current" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
     export tmp_dir=`mktemp -d /tmp/selfextract.XXXXXX`
