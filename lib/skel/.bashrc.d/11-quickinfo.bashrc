@@ -193,7 +193,7 @@ fi
 # TODO: optimize this to run after time delay using timestamp in settings
 set_spinner spinner19
 #spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
-spin read -r wan_ip < <(wget -qO- https://ident.me/)
+spin read -r wan_ip < <(wget -qO- http://ipecho.net/plain \| xargs echo)
 
 # Checks memory usage
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
