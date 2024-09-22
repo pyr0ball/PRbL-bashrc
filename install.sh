@@ -398,10 +398,9 @@ userinstall(){
     # Check for existing bashrc config, append if missing
     if [[ $(cat ${HOME}/.bashrc | grep -c 'bashrc.d') == 0 ]] ; then
         take-backup $HOME/.bashrc
-        echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
-        echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
+        echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." 
+        echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." 
     fi
-
 
     # Create the quickinfo cache directory
     #mkdir -p $HOME/.quickinfo
@@ -462,7 +461,7 @@ globalinstall(){
             # done
             if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
                 take-backup /home/${selecteduser}/.bashrc
-                run echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
+                echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
             fi
             run sudo chown -R ${selecteduser}:${selecteduser} ${installdir}
             if [[ "$bins_missing" == "false" ]] ; then
