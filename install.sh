@@ -1,10 +1,10 @@
 #!/bin/bash
 ###################################################################
-#         Pyr0ball's Reductive Bash Library Installer            #
+#         Pyr0ball's Reductive Bash Library Installer             #
 ###################################################################
 
-# initial vars
-VERSION=2.3.5
+# Initial vars
+VERSION=3.0.0
 scripttitle="Pyr0ball's Reductive Bash Library Installer - v$VERSION"
 
 # Bash expansions to get the name and location of this script when run
@@ -35,24 +35,21 @@ fi
 rundir_absolute=$(pushd $rundir ; pwd ; popd)
 escape_dir=$(printf %q "${rundir_absolute}")
 logfile="${rundir}/${pretty_date}_${scriptname}.log"
+
 #-----------------------------------------------------------------#
 # Script-specific Parameters
 #-----------------------------------------------------------------#
 
-# Store functions revision in a variable to compare with if already installed
-installer_functionsrev=$functionsrev
-
 # Get and store the user currently executing this script
 runuser=$(whoami)
 
-# set up an array containing the users listed under /home/
-users=($(ls /home/))
-
 # If run as non-root, default install to user's home directory
-userinstalldir="$HOME/.local/share/prbl"
+userinstalldir="$HOME/.bashrc.d"
+userconfigdir="$HOME/.config/quickinfo"
 
 # If run as root, this will be the install directory
-globalinstalldir="/usr/share/prbl"
+globalinstalldir="/etc/skel/.bashrc.d"
+globalconfigdir="/etc/quickinfo"
 
 # Initialize arrays for file and dependency management
 bins_missing=()
@@ -60,7 +57,8 @@ backup_files=()
 installed_files=()
 installed_dirs=()
 
-# List of dependency packaged to be istalled via apt (For Debian/Ubuntu)
+# List of dependency packages to be installed
+# Base package names that most distros share
 packages=(
     git
     vim
@@ -92,22 +90,32 @@ elif [ -f /etc/debian_version ]; then
     # Older Debian/Ubuntu/etc.
     OS=Debian
     VER=$(cat /etc/debian_version)
-elif [ -f /etc/SuSe-release ]; then
-    # Older SuSE/etc.
-    ...
 elif [ -f /etc/redhat-release ]; then
     # Older Red Hat, CentOS, etc.
     OS=$(cat /etc/redhat-release | awk '{print $1}')
+    VER=$(cat /etc/redhat-release | grep -o -E '[0-9]+\.[0-9]+' | head -n 1)
 else
     # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
     OS=$(uname -s)
     VER=$(uname -r)
 fi
 
-# Add apt-notifier-common required packages
-if [[ $OS_DETECTED == "Debian" ]] || [[ $OS_DETECTED == "Ubuntu" ]]; then
-    packages+=(apt-config-auto-update)
-fi
+# Add distro-specific packages
+case $OS in
+    Debian|Ubuntu|LinuxMint)
+        packages+=(smartmontools sysstat)
+        ;;
+    CentOS|Fedora|RHEL|Red*)
+        packages+=(smartmontools sysstat)
+        ;;
+    Arch|Manjaro)
+        packages+=(smartmontools sysstat)
+        ;;
+    *)
+        # Default additional packages
+        packages+=(smartmontools sysstat)
+        ;;
+esac
 
 # This variable is what is injected into the bashrc
 bashrc_append="
@@ -116,14 +124,16 @@ if [ -n \"\$BASH_VERSION\" ]; then
     # include .bashrc if it exists
     if [ -d \"\$HOME/.bashrc.d\" ]; then
         for file in \$HOME/.bashrc.d/*.bashrc ; do
-            source \"\$file\"
+            if [ -f \"\$file\" ]; then
+                source \"\$file\"
+            fi
         done
     fi
 fi
 "
 
 #-----------------------------------------------------------------#
-# Script-specific Funcitons
+# Script-specific Functions
 #-----------------------------------------------------------------#
 
 script-title(){
@@ -137,43 +147,49 @@ script-title(){
 
 # Function for displaying the usage of this script
 usage(){
+    script-title
     boxborder \
         "${lbl}Usage:${dfl}" \
         "${lyl}./$scriptname ${bld}[args]${dfl}" \
         "$(boxseparator)" \
         "[args:]" \
-        "   -i [--install]" \
-        "   -d [--dependencies]" \
-        "   -D [--dry-run]" \
-        "   -r [--remove]" \
-        "   -f [--force]" \
-        "   -F [--force-remove]" \
-        "   -u [--update]" \
-        "   -h [--help]" \
+        "   -i [--install]       Install QuickInfo Banner" \
+        "   -d [--dependencies]  Install dependencies only" \
+        "   -D [--dry-run]       Show what would be installed without making changes" \
+        "   -r [--remove]        Remove QuickInfo Banner" \
+        "   -u, -U [--update]    Update an existing installation" \
+        "   -f [--force]         Force installation (overwrite existing files)" \
+        "   -h [--help]          Show this help message" \
         "" \
         "Running this installer as 'root' will install globally to $globalinstalldir" \
         "You must run as 'root' for this script to automatically resolve dependencies"
 }
 
-detectvim(){
-    # If the vim install directory exists, check for and store the highest numerical value version installed
-    if [[ -d /usr/share/vim ]] ; then
-        viminstall=$(ls -lah /usr/share/vim/ | grep vim | grep -v rc | awk '{print $NF}' | tail -n 1)
-    else
-        viminstall=null
-        warn "vim is not currently installed, unable to set up colorscheme and formatting"
-    fi
-}
-
 check-deps(){
     # Iterate through the list of required packages and check if installed
     for pkg in ${packages[@]} ; do
-        local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
+        case $OS in
+            Debian|Ubuntu|LinuxMint)
+                local _pkg=$(dpkg -l $pkg 2>&1 >/dev/null ; echo $?)
+                ;;
+            CentOS|Fedora|RHEL|Red*)
+                local _pkg=$(rpm -q $pkg >/dev/null 2>&1 ; echo $?)
+                ;;
+            Arch|Manjaro)
+                local _pkg=$(pacman -Q $pkg >/dev/null 2>&1 ; echo $?)
+                ;;
+            *)
+                # Default check method (may not work on all distros)
+                local _pkg=$(which $pkg >/dev/null 2>&1 ; echo $?)
+                ;;
+        esac
+        
         # If not installed, add it to the list of missing bins
         if [[ $_pkg != 0 ]] ; then
             bins_missing+=($pkg)
         fi
     done
+    
     # Count the number of entries in bins_missing
     local _bins_missing=${#bins_missing[@]}
     # If higher than 0, return a fail (1)
@@ -188,182 +204,73 @@ install(){
     # If script is run as root, run global install
     if [[ $runuser == root ]] ; then
         installdir="${globalinstalldir}"
-        prbl_bashrc="
-        # Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-        export prbl_functions=\"${installdir}/functions\"
-        "
+        configdir="${globalconfigdir}"
         globalinstall
     else
     # If user is non-root, run user-level install
         installdir="${userinstalldir}"
-        prbl_bashrc="
-        # Pyr0ball's Reductive Bash Library (PRbL) Functions library v$VERSION and greeting page setup
-        export prbl_functions=\"${installdir}/functions\"
-        "
+        configdir="${userconfigdir}"
         userinstall
     fi
 }
 
-install-functions(){
-    # Copy functions
-    if [ -f ${rundir}/PRbL/functions ] ; then
-        install-file ${rundir}/PRbL/functions ${installdir}
-    else
-        curl -ks 'https://raw.githubusercontent.com/pyr0ball/PRbL/main/functions' > ${rundir}/functions
-        install-file ${rundir}/functions ${installdir}
-    fi  
-}
-
-take-backup(){
-    name="$1"
-    # if [[ $update_run != true ]] ; then
-        # Check if a backup file or symbolic link already exists
-        if [[ -e "$name.bak" || -L "$name.bak" ]]; then
-            run boxline " $name.bak backup already exists"
-        else
-            # Check if the file is a hidden file (starts with a dot)
-            if [[ "$name" == .* ]]; then
-                # Add a dot to the beginning of the backup file name
-                backup_name=".${name}.bak"
-            else
-                # Create the backup file name by appending ".bak" to the original file name
-                backup_name="${name}.bak"
-            fi
-            # Copy the file to the backup file with preservation of file attributes
-            run cp -p "$name" "$backup_name"
-            # Add the original file to the list of backup files
-            run boxline " $name.bak backup already exists"
-            # Log the original file name to the backup file list file
-            run echo "$name" >> "$rundir/backup_files.list"
-        fi
-    # fi
-}
-
-restore-backup(){
-	run echo "${#backup_files[@]}"
-	for file in "${backup_files[@]}" ; do 
-		run cp "$file".bak $file
-		run echo "$file is restored"
-	done
-        run boxline " $name.bak backup already exists"
-    if [ -f $rundir/backup_files.list ] ; then
-        run rm $rundir/backup_files.list
-    fi
-}
-
-install-file(){
-    local _source="$1"
-    local _destination="$2"
-    local _source_root="$3"
-    local _filename=${_source##*/}
-    local _destination_file=${_destination}/${_filename#${_source_root}}
-    installed_files+=("${_destination_file}")
-    if [[ $update_run == true ]] ; then
-        run boxline "$scriptname: added file ${_destination_file} to list"
-    else
-        run cp -p $_source $_destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
-        run echo "${_destination_file}" >> $rundir/installed_files.list
-    fi
-}
-
-install-dir() {
-    local _source="$1"
-    local _destination="$2"
-    installed_dirs+=("$_source -> $_destination")
-    # Iterate through all files in the source directory recursively
-    while IFS= read -r -d '' source_file; do
-        # Construct the destination file path by removing the source directory path
-        # and appending it to the destination directory path
-        local _filename="${source_file#${_source}}"
-        local destination_file="${_destination}/${source_file#${_source}}"
-        # Create the parent directory of the destination file if it doesn't exist
-        # Log the destination file path to the logfile
-        #echo "$destination_file" >> "$logfile"
-        installed_files+=($destination_file)
-        if [[ $update_run == true ]] ; then
-            run boxline "$scriptname: added file ${destination_file} to list"
-        else
-            run mkdir -p "$(dirname "$destination_file")"
-            run cp -p ${_source}${_filename} $destination_file && boxline "Installed ${_filename}" || warn "Unable to install ${_filename}"
-            run echo "${destination_file}" >> $rundir/installed_files.list
-        fi
-    done < <(find "$_source" -type f -print0)
-}
-
 install-deps(){
-    boxborder "Installing packages $packages"
+    boxborder "Installing packages ${bins_missing[@]}"
     if [[ dry_run != true ]] ; then
-        # using a spinner function block to track installation progress
-        for _package in $packages ; do 
-            sudo apt-get install -y $_package
-        done
+        # Install packages based on detected OS
+        case $OS in
+            Debian|Ubuntu|LinuxMint)
+                run sudo apt-get update -y
+                for _package in ${bins_missing[@]} ; do 
+                    run sudo apt-get install -y $_package
+                done
+                ;;
+            CentOS|Fedora|RHEL|Red*)
+                for _package in ${bins_missing[@]} ; do 
+                    run sudo yum install -y $_package
+                done
+                ;;
+            Arch|Manjaro)
+                for _package in ${bins_missing[@]} ; do 
+                    run sudo pacman -Sy --noconfirm $_package
+                done
+                ;;
+            *)
+                warn "Unknown OS, cannot install dependencies automatically"
+                return 1
+                ;;
+        esac
     else
-        boxline "DryRun: spin \"for $_package in $packages ; do sudo apt-get install -y $_package ; done\""
+        boxline "DryRun: Would install ${bins_missing[@]}"
     fi
     # Sets dependency installed flag to true
     depsinstalled=true
 }
 
-install-extras(){
-    _extras=($(ls ${escape_dir}/extras/ | grep -v 'log$'))
-    # extra_installs=$(ls ${escape_dir}/extras/)
-    # for file in $extra_installs ; do
-    #     _extras+=("$file")
-    # done
-
-    boxborder "Which extras should be installed?"
-    for each in {1..${#_extras[@]}} ; do
-        preselect+=("false")
-    done
-    multiselect result _extras preselect
-
-    # For each extra, compare input choice and apply installs
-    idx=0
-    for extra in "${_extras[@]}"; do
-        # If the selected user is set to true
-        if [[ "${result[idx]}" == "true" ]] ; then
-            if [[ $dry_run != true ]] ; then
-                boxline "running extra $extra"
-                run "${escape_dir}/extras/$extra -i"
-            else
-                dry_run=false
-                run "${escape_dir}/extras/$extra -D"
-                dry_run=true
-            fi
-        # else
-        #     echo "index for $extra is ${result[idx]}"
-        fi
-    done
-}
-
-extras-menu(){
-    # Download and install any other extras
-    #if [ -d "${rundir_absolute}/extras/" ] ; then
-        boxborder "Extra installs available. Select and install?"
-        extras_menu=(
-        "$(boxline "${green_check} Yes")"
-        "$(boxline "${red_x} No")"
-        )
-        case `select_opt "${extras_menu[@]}"` in
-            0)  boxborder "${grn}Installing extras...${dfl}"
-                install-extras
-                ;;
-            1)  boxline "Skipping extras installs" ;;
-        esac
-    #fi
-}
-
 userinstall(){
-# TODO: modify this function to accept a user as an argument and call it from globalinstall
-    # Create install directory under user's home directory
+    # Create install directory under user's home directory if it doesn't exist
     run mkdir -p ${installdir}
-
-    # Copy functions first
-    install-functions
-
-    # Copy bashrc scripts to home folder
-    install-dir ${rundir}/lib/skel/ $HOME
-
+    run mkdir -p ${configdir}
+    
+    # Install config file first
+    if [ ! -f ${configdir}/config ] ; then
+        # Copy config file
+        install-file ${rundir}/quickinfo_config.sh ${configdir}/config
+        boxline "Installed configuration file to ${configdir}/config"
+    else
+        boxline "Config file already exists, not overwriting"
+        # Create backup of existing config
+        take-backup ${configdir}/config
+        # Install new config as .new
+        install-file ${rundir}/quickinfo_config.sh ${configdir}/config.new
+        boxline "New configuration template installed to ${configdir}/config.new"
+    fi
+    
+    # Install quickinfo script
+    install-file ${rundir}/quickinfo_banner.sh ${installdir}/11-quickinfo.bashrc
+    run chmod +x ${installdir}/11-quickinfo.bashrc
+    boxline "Installed QuickInfo Banner script to ${installdir}/11-quickinfo.bashrc"
+    
     # Check for dependent applications and warn user if any are missing
     if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
@@ -378,62 +285,37 @@ userinstall(){
             0)  boxlinelog "${grn}Installing dependencies...${dfl}"
                 install-deps
                 ;;
-            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+            1)  warn "Dependent Utilities missing: ${bins_missing[@]}" ;;
         esac
     fi
-
-    # Check for and parse the installed vim version
-    detectvim
-
-    # If vim is installed, add config files for colorization and expandtab
-    if [[ $viminstall != null ]] ; then
-        run mkdir -p ${HOME}/.vim/colors
-        install-file $rundir/lib/vimfiles/crystallite.vim ${HOME}/.vim/colors
-        take-backup $HOME/.vimrc
-        cp $rundir/lib/vimfiles/vimrc.local $rundir/lib/vimfiles/.vimrc
-        install-file $rundir/lib/vimfiles/.vimrc $HOME
-        rm $rundir/lib/vimfiles/.vimrc
-    fi
-
+    
     # Check for existing bashrc config, append if missing
-    if [[ $(cat ${HOME}/.bashrc | grep -c 'bashrc.d') == 0 ]] ; then
-        take-backup $HOME/.bashrc
-        echo -e "$bashrc_append" >> $HOME/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
-        echo -e "$prbl_bashrc" >> $HOME/.bashrc.d/00-prbl.bashrc && boxborder "bashc.d/00-prbl installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc.d/00-prbl.bashrc${dfl}. Check this file for errors"
+    if [[ $(grep -c 'bashrc.d' ${HOME}/.bashrc) == 0 ]] ; then
+        take-backup ${HOME}/.bashrc
+        echo -e "$bashrc_append" >> ${HOME}/.bashrc && boxborder "bashrc.d setup installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
     fi
-
-
-    # Create the quickinfo cache directory
-    #mkdir -p $HOME/.quickinfo
-    export prbl_functions="${installdir}/functions"
-
-    # If all required dependencies are installed, launch initial cache creation
-    #if [[ "$bins_missing" == "false" ]] ; then
-    #    bash $HOME/.bashrc.d/11-quickinfo.bashrc
-    #fi
-    #clear
-
-    # launch extra installs
-    extras-menu
-
+    
     if [[ $dry_run != true ]] ; then
-        boxborder "${grn}Please be sure to run ${lyl}sensors-detect --auto${grn} after installation completes${dfl}"
+        boxborder "${grn}QuickInfo Banner installed successfully${dfl}"
+        boxline "You may need to log out and back in to see the banner"
     fi
 }
 
 globalinstall(){
-    # Create global install directory
+    # Create global install directories
     run mkdir -p ${installdir}
-
-    install-functions
-    export prbl_functions="${globalinstalldir}/functions"
-
+    run mkdir -p ${configdir}
+    
+    # Install config file
+    install-file ${rundir}/quickinfo_config.sh ${configdir}/config
+    boxline "Installed global configuration file to ${configdir}/config"
+    
     # Check for dependent applications and offer to install
     if ! check-deps ; then
         warn "Some of the utilities needed by this script are missing"
         boxlinelog "Missing utilities:"
         boxlinelog "${bins_missing[@]}"
-        boxlinelog "Would you like to install them? (this will require root password)"
+        boxlinelog "Would you like to install them?"
         utilsmissing_menu=(
         "$(boxline "${green_check} Yes")"
         "$(boxline "${red_x} No")"
@@ -442,49 +324,75 @@ globalinstall(){
             0)  boxlinelog "${grn}Installing dependencies...${dfl}"
                 install-deps
                 ;;
-            1)  warn "Dependent Utilities missing: $bins_missing" ;;
+            1)  warn "Dependent Utilities missing: ${bins_missing[@]}" ;;
         esac
     fi
-
+    
     # Prompt the user to specify which users to install the quickinfo script for
-    boxborder "Which users should PRbL be installed for?"
+    users=($(ls /home/))
+    boxborder "Which users should QuickInfo Banner be installed for?"
     multiselect result users "false"
-
+    
     # For each user, compare input choice and apply installs
     idx=0
     for selecteduser in "${users[@]}"; do
         # If the selected user is set to true
         if [[ "${result[idx]}" == "true" ]] ; then
-            #cp -r ${rundir}/lib/skel/* /etc/skel/
-            install-dir ${rundir}/lib/skel/ /home/${selecteduser}/
-            # for file in $(ls -a -I . -I .. ${rundir}/lib/skel/) ; do
-            #     install-dir ${rundir}/lib/skel/$file $HOME
-            # done
-            if [[ $(cat /home/${selecteduser}/.bashrc | grep -c prbl) == 0 ]] ; then
+            # Create user's bashrc.d directory if it doesn't exist
+            run mkdir -p /home/${selecteduser}/.bashrc.d
+            run mkdir -p /home/${selecteduser}/.config/quickinfo
+            
+            # Install quickinfo script for the user
+            install-file ${rundir}/quickinfo_banner.sh /home/${selecteduser}/.bashrc.d/11-quickinfo.bashrc
+            run chmod +x /home/${selecteduser}/.bashrc.d/11-quickinfo.bashrc
+            
+            # Copy config file if it doesn't exist
+            if [ ! -f /home/${selecteduser}/.config/quickinfo/config ] ; then
+                install-file ${rundir}/quickinfo_config.sh /home/${selecteduser}/.config/quickinfo/config
+            fi
+            
+            # Update .bashrc if needed
+            if [[ $(grep -c 'bashrc.d' /home/${selecteduser}/.bashrc) == 0 ]] ; then
                 take-backup /home/${selecteduser}/.bashrc
-                run echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc && boxborder "bashc.d installed..." || warn "Malformed append on ${lbl}/home/${selecteduser}/.bashrc${dfl}. Check this file for errors"
+                echo -e "$bashrc_append" >> /home/${selecteduser}/.bashrc
             fi
-            run sudo chown -R ${selecteduser}:${selecteduser} ${installdir}
-            if [[ "$bins_missing" == "false" ]] ; then
-                boxborder "Checking ${selecteduser}'s bashrc..."
-                run su ${selecteduser} -c /home/${selecteduser}.bashrc.d/11-quickinfo.bashrc
-            fi
+            
+            # Set ownership
+            run chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}/.bashrc.d
+            run chown -R ${selecteduser}:${selecteduser} /home/${selecteduser}/.config/quickinfo
+            
+            boxline "Installed QuickInfo Banner for user: ${selecteduser}"
         fi
+        ((idx++))
     done
-
-    detectvim
-    if [[ $viminstall != null ]] ; then
-        install-file $rundir/lib/vimfiles/crystallite.vim /usr/share/vim/${viminstall}/colors
-        take-backup /etc/vim/vimrc.local
-        install-file $rundir/lib/vimfiles/vimrc.local /etc/vim/vimrc.local
+    
+    # Also install to /etc/skel for new users
+    install-file ${rundir}/quickinfo_banner.sh ${globalinstalldir}/11-quickinfo.bashrc
+    run chmod +x ${globalinstalldir}/11-quickinfo.bashrc
+    boxline "Installed QuickInfo Banner to ${globalinstalldir} for new users"
+    
+    if [ ! -d /etc/skel/.config/quickinfo ] ; then
+        run mkdir -p /etc/skel/.config/quickinfo
+        install-file ${rundir}/quickinfo_config.sh /etc/skel/.config/quickinfo/config
+        boxline "Installed QuickInfo Banner config to /etc/skel/.config/quickinfo for new users"
     fi
-    if [ ! -z $(which sensors-detect) ] ; then
+    
+    # Check if /etc/skel/.bashrc exists and has bashrc.d setup
+    if [ -f /etc/skel/.bashrc ] && [[ $(grep -c 'bashrc.d' /etc/skel/.bashrc) == 0 ]] ; then
+        take-backup /etc/skel/.bashrc
+        echo -e "$bashrc_append" >> /etc/skel/.bashrc
+        boxline "Updated /etc/skel/.bashrc for new users"
+    fi
+    
+    # Try to run sensors-detect if available
+    if command -v sensors-detect >/dev/null 2>&1 ; then
         run sensors-detect --auto
     fi
-
-    # Download and install any other extras
-    extras-menu
-    #clear
+    
+    if [[ $dry_run != true ]] ; then
+        boxborder "${grn}QuickInfo Banner installed globally${dfl}"
+        boxline "Users will see the banner on their next login"
+    fi
 }
 
 remove(){
@@ -507,32 +415,212 @@ remove(){
         run rm $rundir/installed_files.list
     fi
     installed_files=()
-    # if [ -f $rundir/backup_files.list ] ; then
-    #     for file in $(cat $rundir/backup_files.list) ; do
-    #         restore-backup $file
-    #     done
-    # fi
+    
     restore-backup
 }
 
-remove-arbitrary(){
-    update_run=true
-    userinstall
-    globalinstall
-    update_run=
-    #backup_files=()
-    remove
+uninstall() {
+    # If script is run as root, run global uninstall
+    if [[ $runuser == root ]] ; then
+        # Prompt the user to specify which users to remove quickinfo from
+        users=($(ls /home/))
+        boxborder "Remove QuickInfo Banner for which users?"
+        multiselect result users "false"
+        
+        # For each user, compare input choice and remove installs
+        idx=0
+        for selecteduser in "${users[@]}"; do
+            # If the selected user is set to true
+            if [[ "${result[idx]}" == "true" ]] ; then
+                if [ -f /home/${selecteduser}/.bashrc.d/11-quickinfo.bashrc ] ; then
+                    run rm /home/${selecteduser}/.bashrc.d/11-quickinfo.bashrc
+                    boxline "Removed QuickInfo Banner for user: ${selecteduser}"
+                fi
+            fi
+            ((idx++))
+        done
+        
+        # Remove from /etc/skel
+        if [ -f ${globalinstalldir}/11-quickinfo.bashrc ] ; then
+            run rm ${globalinstalldir}/11-quickinfo.bashrc
+            boxline "Removed QuickInfo Banner from ${globalinstalldir}"
+        fi
+        
+        # Ask if global config should be removed
+        boxborder "Remove global configuration directory at ${globalconfigdir}?"
+        config_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${config_menu[@]}"` in
+            0)  run rm -rf ${globalconfigdir}
+                boxline "Removed global configuration directory"
+                ;;
+            1)  boxline "Kept global configuration directory" ;;
+        esac
+    else
+        # Remove user installation
+        if [ -f ${userinstalldir}/11-quickinfo.bashrc ] ; then
+            run rm ${userinstalldir}/11-quickinfo.bashrc
+            boxline "Removed QuickInfo Banner from ${userinstalldir}"
+        fi
+        
+        # Ask if user config should be removed
+        boxborder "Remove configuration directory at ${userconfigdir}?"
+        config_menu=(
+        "$(boxline "${green_check} Yes")"
+        "$(boxline "${red_x} No")"
+        )
+        case `select_opt "${config_menu[@]}"` in
+            0)  run rm -rf ${userconfigdir}
+                boxline "Removed configuration directory"
+                ;;
+            1)  boxline "Kept configuration directory" ;;
+        esac
+    fi
+    
+    boxborder "${grn}QuickInfo Banner has been uninstalled${dfl}"
 }
 
 update(){
-    remove-arbitrary
-    run git stash -m "$pretty_date stashing changes before update to latest"
-    run git fetch && run git pull --recurse-submodules
-    pushd PRbL
-        run git checkout main
-        run git pull
-    popd
-    install
+    boxborder "Updating QuickInfo Banner from repository"
+    
+    # Check if we're in a git repository
+    if [ -d "${rundir}/.git" ]; then
+        boxline "Detected git repository, pulling latest changes..."
+        run git -C "${rundir}" stash -m "Auto-stash before update $(date)" || true
+        run git -C "${rundir}" pull
+        boxline "Repository updated successfully"
+    else
+        boxline "Not a git repository or .git directory not found"
+        boxline "Continuing with update using local files"
+    fi
+    
+    # First uninstall old version
+    if [[ $runuser == root ]] ; then
+        # For global update, we need to gather installation info first
+        users=($(ls /home/))
+        user_has_quickinfo=()
+        
+        # Check which users have quickinfo installed
+        for user in "${users[@]}"; do
+            if [ -f /home/${user}/.bashrc.d/11-quickinfo.bashrc ] ; then
+                user_has_quickinfo+=("$user")
+            fi
+        done
+        
+        # If installed in /etc/skel, note that
+        has_skel_install=false
+        if [ -f ${globalinstalldir}/11-quickinfo.bashrc ] ; then
+            has_skel_install=true
+        fi
+        
+        # Backup old installations before removing
+        for user in "${user_has_quickinfo[@]}"; do
+            if [ -f /home/${user}/.bashrc.d/11-quickinfo.bashrc ]; then
+                take-backup /home/${user}/.bashrc.d/11-quickinfo.bashrc
+                run rm /home/${user}/.bashrc.d/11-quickinfo.bashrc
+            fi
+        done
+        
+        if [ "$has_skel_install" = true ] ; then
+            take-backup ${globalinstalldir}/11-quickinfo.bashrc
+            run rm ${globalinstalldir}/11-quickinfo.bashrc
+        fi
+        
+        # Install new version
+        # For users
+        for user in "${user_has_quickinfo[@]}"; do
+            install-file ${rundir}/quickinfo_banner.sh /home/${user}/.bashrc.d/11-quickinfo.bashrc
+            run chmod +x /home/${user}/.bashrc.d/11-quickinfo.bashrc
+            run chown ${user}:${user} /home/${user}/.bashrc.d/11-quickinfo.bashrc
+            
+            # Update config file if needed
+            if [ -f /home/${user}/.config/quickinfo/config ]; then
+                # Save a backup of the current config
+                take-backup /home/${user}/.config/quickinfo/config
+                # Install the new config template as config.new
+                run mkdir -p /home/${user}/.config/quickinfo
+                install-file ${rundir}/quickinfo_config.sh /home/${user}/.config/quickinfo/config.new
+                run chown ${user}:${user} /home/${user}/.config/quickinfo/config.new
+                boxline "Updated config template for user: ${user} (stored as config.new)"
+            fi
+            
+            boxline "Updated QuickInfo Banner for user: ${user}"
+        done
+        
+        # For /etc/skel if needed
+        if [ "$has_skel_install" = true ] ; then
+            install-file ${rundir}/quickinfo_banner.sh ${globalinstalldir}/11-quickinfo.bashrc
+            run chmod +x ${globalinstalldir}/11-quickinfo.bashrc
+            
+            # Update /etc/skel config
+            if [ -d /etc/skel/.config/quickinfo ]; then
+                install-file ${rundir}/quickinfo_config.sh /etc/skel/.config/quickinfo/config.new
+                boxline "Updated config template in /etc/skel/.config/quickinfo"
+            else
+                run mkdir -p /etc/skel/.config/quickinfo
+                install-file ${rundir}/quickinfo_config.sh /etc/skel/.config/quickinfo/config
+                boxline "Created config in /etc/skel/.config/quickinfo"
+            fi
+            
+            boxline "Updated QuickInfo Banner in ${globalinstalldir}"
+        fi
+        
+        # Update global config
+        if [ -d ${globalconfigdir} ]; then
+            take-backup ${globalconfigdir}/config
+            install-file ${rundir}/quickinfo_config.sh ${globalconfigdir}/config.new
+            boxline "Updated global config template (stored as config.new)"
+        else
+            run mkdir -p ${globalconfigdir}
+            install-file ${rundir}/quickinfo_config.sh ${globalconfigdir}/config
+            boxline "Created global config in ${globalconfigdir}"
+        fi
+        
+    else
+        # User update is simpler
+        if [ -f ${userinstalldir}/11-quickinfo.bashrc ] ; then
+            take-backup ${userinstalldir}/11-quickinfo.bashrc
+            run rm ${userinstalldir}/11-quickinfo.bashrc
+            install-file ${rundir}/quickinfo_banner.sh ${userinstalldir}/11-quickinfo.bashrc
+            run chmod +x ${userinstalldir}/11-quickinfo.bashrc
+            boxline "Updated QuickInfo Banner in ${userinstalldir}"
+            
+            # Update config file if needed
+            if [ -f ${configdir}/config ]; then
+                # Save a backup of the current config
+                take-backup ${configdir}/config
+                # Install the new config template as config.new
+                run mkdir -p ${configdir}
+                install-file ${rundir}/quickinfo_config.sh ${configdir}/config.new
+                boxline "Updated config template (stored as config.new)"
+            else
+                run mkdir -p ${configdir}
+                install-file ${rundir}/quickinfo_config.sh ${configdir}/config
+                boxline "Created new config in ${configdir}"
+            fi
+        else
+            warn "QuickInfo Banner not found in ${userinstalldir}"
+            boxborder "Would you like to install QuickInfo Banner?"
+            install_menu=(
+            "$(boxline "${green_check} Yes")"
+            "$(boxline "${red_x} No")"
+            )
+            case `select_opt "${install_menu[@]}"` in
+                0)  install
+                    return $?
+                    ;;
+                1)  boxline "Update aborted" 
+                    return 1
+                    ;;
+            esac
+        fi
+    fi
+    
+    boxborder "${grn}QuickInfo Banner has been updated${dfl}"
+    boxline "New configuration options are available in config.new files"
+    boxline "Review and merge these changes with your existing configuration"
 }
 
 dry-run-report(){
@@ -556,13 +644,14 @@ dry-run-report(){
 script-title
 case $1 in
     -i | --install)
-        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
+        install && success " [QuickInfo Banner Installed]"
         ;;
     -r | --remove)
-        remove && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Removed${dfl}]"
+        uninstall && success " [QuickInfo Banner Removed]"
         ;;
     -d | --dependencies)
-        install-deps && success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dependencies installed!"
+        check-deps
+        install-deps && success "Dependencies installed!"
         ;;
     -D | --dry-run)
         export dry_run=true
@@ -573,18 +662,15 @@ case $1 in
         dry-run-report
         usage   
         unset dry_run
-        success "${red}P${lrd}R${ylw}b${ong}L${dfl} Dry-Run Complete!"
+        success "Dry-Run Complete!"
         ;;
-    -u | --update)
-        export update_run=true
-        update && unset update_run && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Updated${dfl}]"
+    -u | --update | -U)
+        update && success " [QuickInfo Banner Updated]"
         ;;
     -f | --force)
-        remove-arbitrary
-        install && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Installed${dfl}]"
-        ;;
-    -F | --force-remove)
-        remove-arbitrary && success " [${red}P${lrd}R${ylw}b${ong}L ${lyl}Force-Removed${dfl}]"
+        run rm -f ${userinstalldir}/11-quickinfo.bashrc 
+        run rm -f ${globalinstalldir}/11-quickinfo.bashrc
+        install && success " [QuickInfo Banner Force-Installed]"
         ;;
     -h | --help)
         usage
@@ -592,9 +678,5 @@ case $1 in
     *)
         warn "Invalid argument $@"
         usage
-        #exit 2
         ;;
 esac
-#------------------------------------------------------#
-# Script begins here
-#------------------------------------------------------#
