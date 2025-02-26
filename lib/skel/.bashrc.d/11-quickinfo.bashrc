@@ -3,82 +3,16 @@
 ###############################################################
 # MOTD/Login Quick Information script                         #
 # This script pulls information from a variety of sources     #
-# in the a linux system, and aggregates it into a small table #
+# in a Linux system, and aggregates it into a small table     #
 # that is displayed upon terminal login to the system.        #
 #                                                             #
 #           Written by Alan "pyr0ball" Weinstock              #
+#           Enhanced for multi-distro compatibility           #
 ###############################################################
 
-quickinfo_version=2.1.1
-prbl_functons_req_ver=1.6.0
+quickinfo_version=3.0.0
+prbl_functons_req_ver=2.0.0
 
-# TODO: Need to re-test after v2.2.x
-
-### TODO: This implementation is still broken. context for location breaks during login
-# if ! [[ $scriptname =~ "-bash" ]] ; then
-#   #rundir_absolute=$(cd $rundir && pwd)
-#   rundir_absolute=$(pushd $rundir && pwd && popd)
-#   settingsfile=$(echo "$rundir_absolute/$scriptname" | sed -E 's/(.*)bashrc/\1settings/')
-# else
-#   if ! [ -f "$HOME/.bashrc.d/11-quickinfo.settings"] ; then
-#     settingsfile="$HOME/.bashrc.d/11-quickinfo.settings"
-#   else
-
-    ########################################
-    # Default quickinfo bashrc Preferences #
-    ########################################
-
-    # Disable run on non-interactive sessions (set true to disable)
-    interactive_only=false
-
-    # Network Adapter Preferences
-
-    # set false to hide network adapters without valid IP's
-    show_disconnected=true
-
-    # Ignored network adapter names (regex match)
-    # separate adapter names with '\|' ex. "lo\|tun0"
-    filtered_adapters="lo"
-
-    # Disks
-
-    allowed_disk_prefixes=(
-      sd
-      md
-      mapper
-      nvme
-      mmcblk
-      root
-    )
-
-    disallowed_disk_prefixes=(
-      boot
-    )
-
-    #######################################################
-    # Do not change these unless you know what you're doing
-    # convert array to grep string
-    for prefix in "${allowed_disk_prefixes[@]}" ; do
-      allowed_disk_prefixes_string+="\\|$prefix"
-    done
-    # Remove the leading '\|' from the grep string
-    allowed_disk_prefixes_string="${allowed_disk_prefixes_string:2}"
-
-    # Manual regex string
-    # To use, uncomment and separate disk types with '\|' ex. "sd\|nvme"
-    # or use any other grep-compatible filtering desired
-    #allowed_disk_prefixes_string="sd\|md\|mapper\|nvme\|mmcblk\|root"
-
-
-    for prefix in "${disallowed_disk_prefixes[@]}" ; do
-      disallowed_disk_prefixes_string+="\\|$prefix"
-    done
-    disallowed_disk_prefixes_string="${allowed_disk_prefixes_string:2}"
-#   fi
-# fi
-# source $settingsfile
-
-# source PRbL functions
 # Source PRbL Functions locally or retrieve from online
 if [ ! -z $prbl_functions ] ; then
     source $prbl_functions
@@ -100,137 +34,635 @@ else
     fi
 fi
 
-# if [ ! -z $prbl_functions ] ; then
-#   source $prbl_functions
-# else
-#   # Failover if global variable is not defined. Checks for 'functions' in same location
-#   echo -e "PRbL functions not defined. Check ~/.bashrc"
-#   if [ -f "${BASH_SOURCE[0]%/*}/functions" ] ; then
-#     source $rundir/functions
-#   else
-#     echo -e "local functions file also missing. Some visual elements will be missing"
-#   fi
-# fi
-# Locate and import settings (shares same name with script apart from file extension)
+# Locate script information
 scriptname="${BASH_SOURCE[0]##*/}"
 rundir="${BASH_SOURCE[0]%/*}"
 
+########################################
+# Default quickinfo bashrc Preferences #
+########################################
+
+# Disable run on non-interactive sessions (set true to disable)
+interactive_only=false
+
+# Network Adapter Preferences
+# set false to hide network adapters without valid IP's
+show_disconnected=true
+
+# Ignored network adapter names (regex match)
+# separate adapter names with '\|' ex. "lo\|tun0"
+filtered_adapters="lo"
+
+# Disks
+allowed_disk_prefixes=(
+  sd
+  md
+  mapper
+  nvme
+  mmcblk
+  root
+  vd  # For virtual disks (KVM/Xen)
+  xvd # For Xen virtual disks
+)
+
+disallowed_disk_prefixes=(
+  boot
+  snap # Exclude snap mounts
+  loop # Exclude loop devices
+)
+
+# Settings for additional information display
+show_gpu_info=true
+show_container_info=true
+show_service_status=true
+show_security_info=true
+show_smart_status=false # Requires root privileges or sudo config
+show_top_processes=true
+
+# Services to check (space separated list)
+critical_services="sshd nginx apache2 mysqld mariadb docker containerd kubelet cron"
+
+#######################################################
+# Do not change these unless you know what you're doing
+# convert array to grep string
+for prefix in "${allowed_disk_prefixes[@]}" ; do
+  allowed_disk_prefixes_string+="\\|$prefix"
+done
+# Remove the leading '\|' from the grep string
+allowed_disk_prefixes_string="${allowed_disk_prefixes_string:2}"
+
+for prefix in "${disallowed_disk_prefixes[@]}" ; do
+  disallowed_disk_prefixes_string+="\\|$prefix"
+done
+disallowed_disk_prefixes_string="${disallowed_disk_prefixes_string:2}"
+
 # check PRbL functions version
-if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
-  warn "PRbL functions installed are lower than recommended ($prbl_functons_req_ver)"
-  warn "Some features may not work as expected"
-else
-  if ! vercomp 1 1 ; then
-    warn "PRbL functions library is older than 1.1.3 (detection function missing), please update!"
-    warn "cd $rundir/PRbL ; git stash ; git pull ; cp ./functions $prbl_functions"
+if command -v vercomp >/dev/null 2>&1; then
+  if [[ $(vercomp $functionsrev $prbl_functons_req_ver) == 2 ]] ; then
+    warn "PRbL functions installed are lower than recommended ($prbl_functons_req_ver)"
     warn "Some features may not work as expected"
   fi
 fi
 
 ################################
-
-# Help - displayed when user inputs the -h option, or upon
-# running this script with an invalid argument
-
-read -r -d '' usage << EOF
-$scriptname [-h] -- Displays information relevent to the system upon login
-
-Usage:
-    -h  show this help text
-EOF
-
+# Enhanced OS Detection Function
 ################################
 
-# Options parser
-
-while getopts ":h" opt
-	do
-		case ${opt} in
-			h)	echo "$usage"
-				exit
-				;;
-			:)	
-				;;
-			\?)	printf "illegal option: -%s\n" "$OPTARG" >&2
-				echo "$usage" >&2
-				exit 1
-				;;
-			esac
-		done
-		shift $((OPTIND - 1))
+detect_os() {
+  # Initialize OS info variables
+  OS="Unknown"
+  VER="Unknown"
+  ID="Unknown"
+  
+  # Method 1: lsb_release
+  if command -v lsb_release >/dev/null 2>&1; then
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
+    ID=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
+    return
+  fi
+  
+  # Method 2: /etc/os-release
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$NAME
+    VER=$VERSION_ID
+    ID=${ID:-$NAME}
+    ID=$(echo $ID | tr '[:upper:]' '[:lower:]')
+    return
+  fi
+  
+  # Method 3: /etc/lsb-release
+  if [ -f /etc/lsb-release ]; then
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
+    ID=$(echo $DISTRIB_ID | tr '[:upper:]' '[:lower:]')
+    return
+  fi
+  
+  # Method 4: /etc/{system}-release files
+  for release_file in /etc/*-release; do
+    if [ -f "$release_file" ] && [ "$release_file" != "/etc/os-release" ] && [ "$release_file" != "/etc/lsb-release" ]; then
+      OS=$(head -n1 "$release_file" | cut -d' ' -f1)
+      VER=$(head -n1 "$release_file" | grep -o -E '[0-9]+\.[0-9]+' | head -n1)
+      ID=$(echo $OS | tr '[:upper:]' '[:lower:]')
+      return
+    fi
+  done
+  
+  # Method 5: Fallback to uname
+  OS=$(uname -s)
+  VER=$(uname -r)
+  ID=$(echo $OS | tr '[:upper:]' '[:lower:]')
+}
 
 ################################
-
-# Uncomment this section to disable running this in non-interactive sessions
-# For example, on automated logins for a git process, the entire output of
-# this script will be written to logs. Disabling non-interactive sessions
-# will prevent this script from clogging the logging, but it also can cause
-# unexpected exits if improperly deployed (immediate exit on ssh login)
-#if [[ $interactive_only == true ]] ; then
-#  [[ "$-" == *i* ]] || fail "non-interactive session"
-#fi
+# Package Manager Detection
 ################################
 
-# Global parameters pulled from system environment
-  location=$(uname -a | awk '{print $2}')
-  image_version=$(uname -r)
-  software_version="$OS $VER"
-# Checks if variables are empty and fills the variables
-# with generic warning
+detect_package_manager() {
+  package_manager="unknown"
+  update_cmd=""
+  update_check_cmd=""
+  
+  if command -v apt >/dev/null 2>&1 || command -v apt-get >/dev/null 2>&1; then
+    package_manager="apt"
+    update_cmd="apt update && apt upgrade"
+    if [ -f /usr/lib/update-notifier/apt-check ]; then
+      update_check_cmd="/usr/lib/update-notifier/apt-check --human-readable"
+    else
+      update_check_cmd="apt list --upgradable 2>/dev/null | grep -c ^"
+    fi
+  elif command -v dnf >/dev/null 2>&1; then
+    package_manager="dnf"
+    update_cmd="dnf upgrade"
+    update_check_cmd="dnf check-update --quiet | grep -v \"^$\" | wc -l"
+  elif command -v yum >/dev/null 2>&1; then
+    package_manager="yum"
+    update_cmd="yum update"
+    update_check_cmd="yum check-update --quiet | grep -v \"^$\" | wc -l"
+  elif command -v pacman >/dev/null 2>&1; then
+    package_manager="pacman"
+    update_cmd="pacman -Syu"
+    update_check_cmd="pacman -Qu | wc -l"
+  elif command -v zypper >/dev/null 2>&1; then
+    package_manager="zypper"
+    update_cmd="zypper update"
+    update_check_cmd="zypper list-updates | grep -c \"^v \""
+  elif command -v apk >/dev/null 2>&1; then
+    package_manager="apk"
+    update_cmd="apk update && apk upgrade"
+    update_check_cmd="apk version -v | grep -c upgradable"
+  fi
+}
 
-empty_var="MISSING"
+################################
+# Check for Updates
+################################
 
-if [ -z "$location" ]
-	then
-		location=$empty_var
-		any_missing=true
-fi
-if [ "$any_missing" == "true" ]
-	then
-		vars_missing=$(echo "Something went wrong gathering information")
-fi
+check_for_updates() {
+  packages_available=0
+  security_updates=0
+  need_updates=false
+  
+  case $package_manager in
+    apt)
+      if [ -f /usr/lib/update-notifier/apt-check ]; then
+        packages_available=$(/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f1)
+        security_updates=$(/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f2)
+        
+        if [ $packages_available -gt 0 ]; then
+          packages="${packages_available} updates can be installed"
+          need_updates=true
+        else
+          packages="0 updates available"
+        fi
+        
+        if [ $security_updates -gt 0 ]; then
+          supdates="${security_updates} security updates"
+          need_updates=true
+        else
+          supdates="0 security updates"
+        fi
+      else
+        # If apt-check isn't available, try an alternative method
+        if command -v apt >/dev/null 2>&1; then
+          # This method requires root/sudo, will be empty if not available
+          packages_available=$(apt list --upgradable 2>/dev/null | grep -c upgradable || echo "unknown")
+          if [[ "$packages_available" != "unknown" && $packages_available -gt 0 ]]; then
+            packages="${packages_available} updates can be installed"
+            need_updates=true
+          else
+            packages="unknown updates available"
+          fi
+        fi
+      fi
+      ;;
+      
+    dnf|yum)
+      # Check if we can run as non-root
+      if timeout 5 $package_manager check-update -q &>/dev/null; then
+        packages_available=$($update_check_cmd)
+        if [ $packages_available -gt 0 ]; then
+          packages="${packages_available} updates can be installed"
+          need_updates=true
+        else
+          packages="0 updates available"
+        fi
+      else
+        packages="Need root to check updates"
+      fi
+      ;;
+      
+    pacman)
+      if pacman -Qu &>/dev/null; then
+        packages_available=$(pacman -Qu | wc -l)
+        if [ $packages_available -gt 0 ]; then
+          packages="${packages_available} updates can be installed"
+          need_updates=true
+        else
+          packages="0 updates available"
+        fi
+      else
+        packages="Need to run 'pacman -Sy' to check updates"
+      fi
+      ;;
+      
+    zypper)
+      if timeout 5 zypper list-updates &>/dev/null; then
+        packages_available=$(zypper list-updates | grep '^v ' | wc -l)
+        if [ $packages_available -gt 0 ]; then
+          packages="${packages_available} updates can be installed"
+          need_updates=true
+        else
+          packages="0 updates available"
+        fi
+      else
+        packages="Need root to check updates"
+      fi
+      ;;
+      
+    apk)
+      if timeout 5 apk version -v &>/dev/null; then
+        packages_available=$(apk version -v | grep -c upgradable)
+        if [ $packages_available -gt 0 ]; then
+          packages="${packages_available} updates can be installed"
+          need_updates=true
+        else
+          packages="0 updates available"
+        fi
+      else
+        packages="Need root to check updates"
+      fi
+      ;;
+      
+    *)
+      packages="Unknown package manager"
+      ;;
+  esac
+  
+  # Check for release upgrade
+  release_upgrade=""
+  if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
+    if [ -f /var/lib/ubuntu-release-upgrader/release-upgrade-available ]; then
+      release_upgrade="$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)"
+      need_updates=true
+    fi
+  fi
+}
 
-# Gets public IP address using opendns
-# TODO: optimize this to run after time delay using timestamp in settings
-set_spinner spinner19
-#spin "eval $(wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo ))"
-#spin read -r wan_ip < <(wget -qO- http://ipecho.net/plain \| xargs echo)
-wan_ip=$(wget -qO- http://ipecho.net/plain \| xargs echo )
-#spin read -r wan_ip < <(wget -qO- https://ident.me/)
+################################
+# CPU Temperature
+################################
 
-# Checks memory usage
+get_cpu_temp() {
+  cputemp="N/A"
+  
+  # Method 1: lm-sensors
+  if command -v sensors >/dev/null 2>&1; then
+    temp=$(sensors | grep -m 1 -E 'Core 0|CPU Temp|Tdie' | grep -o -E '[0-9]+\.[0-9]+' | head -n1)
+    if [ ! -z "$temp" ]; then
+      cputemp=$(printf "%.0f" $temp)
+    fi
+  fi
+  
+  # Method 2: /sys/class/thermal
+  if [ "$cputemp" = "N/A" ] && [ -d /sys/class/thermal ]; then
+    for zone in /sys/class/thermal/thermal_zone*/temp; do
+      if [ -f "$zone" ]; then
+        temp=$(cat "$zone")
+        if [ $temp -gt 0 ]; then
+          # Convert millidegrees to degrees
+          cputemp=$(( temp / 1000 ))
+          break
+        fi
+      fi
+    done
+  fi
+  
+  # Method 3: Raspberry Pi specific
+  if [ "$cputemp" = "N/A" ] && [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+    temp=$(cat /sys/class/thermal/thermal_zone0/temp)
+    cputemp=$(( temp / 1000 ))
+  fi
+  
+  # Add color warning if temperature is high
+  if [[ "$cputemp" != "N/A" ]]; then
+    if [[ "$cputemp" -gt "65" ]]; then
+      cputemp="${ong}${blk}${cputemp}°C${dfl}"
+    else
+      cputemp="${cputemp}°C"
+    fi
+  fi
+}
+
+################################
+# GPU Information
+################################
+
+get_gpu_info() {
+  gpu_info="N/A"
+  gpu_temp="N/A"
+  gpu_util="N/A"
+  
+  # Check for NVIDIA GPU with nvidia-smi
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    gpu_info=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n1 | cut -c -30)
+    gpu_temp=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader | head -n1)
+    gpu_util=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader | head -n1 | cut -d' ' -f1)
+    
+    # Add color to GPU temperature
+    if [[ "$gpu_temp" != "N/A" ]]; then
+      if [[ "$gpu_temp" -gt "70" ]]; then
+        gpu_temp="${ong}${blk}${gpu_temp}°C${dfl}"
+      else
+        gpu_temp="${gpu_temp}°C"
+      fi
+    fi
+    
+    have_gpu=true
+    return
+  fi
+  
+  # Check for AMD GPU with rocm-smi
+  if command -v rocm-smi >/dev/null 2>&1; then
+    gpu_info=$(rocm-smi --showproductname | grep -v "===" | head -n1 | awk '{print $2}' | cut -c -30)
+    gpu_temp=$(rocm-smi --showtemp | grep -v "===" | head -n1 | awk '{print $2}')
+    
+    # Add color to GPU temperature
+    if [[ "$gpu_temp" != "N/A" ]]; then
+      if [[ "$gpu_temp" -gt "70" ]]; then
+        gpu_temp="${ong}${blk}${gpu_temp}°C${dfl}"
+      else
+        gpu_temp="${gpu_temp}°C"
+      fi
+    fi
+    
+    have_gpu=true
+    return
+  fi
+  
+  # Basic GPU detection through lspci
+  if command -v lspci >/dev/null 2>&1; then
+    gpu_info=$(lspci | grep -i 'vga\|3d\|display' | head -n1 | cut -d: -f3 | cut -c -30)
+    if [ ! -z "$gpu_info" ]; then
+      have_gpu=true
+      return
+    fi
+  fi
+  
+  have_gpu=false
+}
+
+################################
+# Get Container/VM Information
+################################
+
+get_container_info() {
+  container_type="N/A"
+  container_stats="N/A"
+  in_container=false
+  
+  # Check if running in Docker
+  if [ -f /.dockerenv ] || grep -q docker /proc/1/cgroup 2>/dev/null; then
+    container_type="Docker"
+    in_container=true
+  fi
+  
+  # Check if running in LXC/LXD
+  if grep -q lxc /proc/1/cgroup 2>/dev/null; then
+    container_type="LXC"
+    in_container=true
+  fi
+  
+  # Check if running in Kubernetes
+  if [ -f /var/run/secrets/kubernetes.io/serviceaccount/namespace ]; then
+    container_type="Kubernetes Pod"
+    in_container=true
+  fi
+  
+  # Check for systemd-nspawn
+  if [ -d /run/systemd/nspawn ]; then
+    container_type="systemd-nspawn"
+    in_container=true
+  fi
+  
+  # Check for VM
+  if [ "$in_container" = false ]; then
+    if command -v systemd-detect-virt >/dev/null 2>&1; then
+      virt=$(systemd-detect-virt)
+      if [ "$virt" != "none" ]; then
+        container_type="VM ($virt)"
+        in_container=true
+      fi
+    elif [ -e /proc/cpuinfo ]; then
+      if grep -q "hypervisor" /proc/cpuinfo; then
+        container_type="VM (unknown)"
+        in_container=true
+      fi
+    fi
+  fi
+  
+  # Get Docker container stats if Docker is installed
+  if command -v docker >/dev/null 2>&1 && [ "$in_container" = false ]; then
+    container_count=$(docker ps -q 2>/dev/null | wc -l || echo "0")
+    if [ "$container_count" -gt 0 ]; then
+      container_stats="$container_count running Docker containers"
+      have_containers=true
+    else
+      container_stats="No running containers"
+      have_containers=false
+    fi
+  fi
+  
+  # Get LXC container stats if LXC is installed
+  if command -v lxc >/dev/null 2>&1 && [ "$in_container" = false ]; then
+    container_count=$(lxc list --format csv -c s | grep -c RUNNING 2>/dev/null || echo "0")
+    if [ "$container_count" -gt 0 ]; then
+      container_stats="$container_stats, $container_count running LXC containers"
+      have_containers=true
+    fi
+  fi
+}
+
+################################
+# Get Service Status
+################################
+
+get_service_status() {
+  services_down=()
+  
+  if command -v systemctl >/dev/null 2>&1; then
+    for service in $critical_services; do
+      if systemctl is-active --quiet $service 2>/dev/null; then
+        # Service is running, do nothing
+        :
+      elif systemctl is-enabled --quiet $service 2>/dev/null; then
+        # Service is enabled but not running
+        services_down+=("$service")
+      fi
+    done
+  elif command -v service >/dev/null 2>&1; then
+    for service in $critical_services; do
+      if service $service status &>/dev/null; then
+        # Service is running, do nothing
+        :
+      else
+        # Check if service exists but is not running
+        if [ -f "/etc/init.d/$service" ]; then
+          services_down+=("$service")
+        fi
+      fi
+    done
+  fi
+  
+  if [ ${#services_down[@]} -gt 0 ]; then
+    service_status="${lrd}Services down: ${services_down[*]}${dfl}"
+    have_service_issues=true
+  else
+    service_status="${grn}All monitored services running${dfl}"
+    have_service_issues=false
+  fi
+}
+
+################################
+# Get Security Information
+################################
+
+get_security_info() {
+  failed_logins=0
+  last_login="N/A"
+  ssh_sessions=0
+  
+  # Get failed login attempts
+  if command -v journalctl >/dev/null 2>&1; then
+    failed_logins=$(journalctl -u sshd --since yesterday | grep -c "Failed password")
+  elif [ -f /var/log/auth.log ]; then
+    failed_logins=$(grep -c "Failed password" /var/log/auth.log)
+  fi
+  
+  # Get last successful login
+  if command -v last >/dev/null 2>&1; then
+    last_user=$(who am i | awk '{print $1}')
+    if [ ! -z "$last_user" ]; then
+      last_login=$(last -n 2 $last_user | head -n 1 | awk '{print $4" "$5" "$6" "$7}')
+    fi
+  fi
+  
+  # Get current SSH sessions
+  if command -v who >/dev/null 2>&1; then
+    ssh_sessions=$(who | grep -c "pts")
+  fi
+  
+  # Get firewall status
+  if command -v ufw >/dev/null 2>&1; then
+    firewall_status=$(ufw status | head -n 1)
+  elif command -v firewall-cmd >/dev/null 2>&1; then
+    firewall_status="firewalld: $(firewall-cmd --state)"
+  elif command -v iptables >/dev/null 2>&1; then
+    iptables_rules=$(iptables -L -n | grep -c "REJECT\|DROP")
+    if [ $iptables_rules -gt 0 ]; then
+      firewall_status="iptables: $iptables_rules blocking rules active"
+    else
+      firewall_status="iptables: No blocking rules found"
+    fi
+  else
+    firewall_status="No firewall detected"
+  fi
+}
+
+################################
+# Get SMART Disk Status
+################################
+
+get_smart_status() {
+  smart_alerts=()
+  
+  if command -v smartctl >/dev/null 2>&1; then
+    for disk in $(lsblk -d -o name | grep -E "^($allowed_disk_prefixes_string)" | grep -v -E "^($disallowed_disk_prefixes_string)"); do
+      # Try to run smartctl without sudo first
+      smart_status=$(smartctl -H /dev/$disk 2>/dev/null)
+      if [ $? -ne 0 ]; then
+        # If failed, try with sudo if available (won't work without password prompt in most cases)
+        if command -v sudo >/dev/null 2>&1; then
+          smart_status=$(sudo -n smartctl -H /dev/$disk 2>/dev/null || echo "Permission denied")
+        else
+          smart_status="Permission denied"
+        fi
+      fi
+      
+      if echo "$smart_status" | grep -q "FAILED"; then
+        smart_alerts+=("${lrd}/dev/$disk FAILED${dfl}")
+      elif echo "$smart_status" | grep -q "Permission denied"; then
+        continue
+      fi
+    done
+  fi
+  
+  if [ ${#smart_alerts[@]} -gt 0 ]; then
+    smart_status="${lrd}SMART Alerts: ${smart_alerts[*]}${dfl}"
+    have_smart_issues=true
+  else
+    smart_status="${grn}No SMART alerts detected${dfl}"
+    have_smart_issues=false
+  fi
+}
+
+################################
+# Get Top Processes
+################################
+
+get_top_processes() {
+  if command -v ps >/dev/null 2>&1; then
+    # Get top 3 CPU processes
+    top_cpu=$(ps -eo pcpu,pid,user,args --sort=-pcpu | head -n 4 | tail -n 3 | awk '{printf "%-5s %-8s %-15.15s\n", $1"%", $3, $4}')
+    
+    # Get top 3 memory processes
+    top_mem=$(ps -eo pmem,pid,user,args --sort=-pmem | head -n 4 | tail -n 3 | awk '{printf "%-5s %-8s %-15.15s\n", $1"%", $3, $4}')
+  fi
+}
+
+################################
+# Main Logic
+################################
+
+# Run detection functions
+detect_os
+detect_package_manager
+check_for_updates
+get_cpu_temp
+
+# Get network information
+location=$(uname -a | awk '{print $2}')
+image_version=$(uname -r)
+software_version="$OS $VER"
 mem_usage=$(free -m | grep Mem | awk '{print $3"M/"$2"M"}')
 
-# Grab number of CPU's for calculating total system load
-num_cpus=$(lscpu | grep -v node | grep CPU\(s\)\: | awk '{print $2}')
+# Get swap usage
+swap_usage=$(free -m | grep Swap | awk '{if ($2 > 0) print $3"M/"$2"M"; else print "None"}')
 
-# Checks load averages using uptime, cuts out the load
-# average numbers and prints them as percentages after
-# accounting for CPU threads
+# Get number of CPUs and load averages
+num_cpus=$(nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
 load_check=$(uptime | sed -r 's|.*load average: ([\.0-9]+), ([\.0-9]+), ([\.0-9]+)|\1 \2 \3|g')
 load_averages=$(echo "$load_check $num_cpus" | awk '{printf "5min: %.0f%% ", $1/$4*100} {printf "10min: %.0f%% ", $2/$4*100} {printf "15min: %.0f%%", $3/$4*100}' ORS=' ')
 
-# Alternate CPU Utilization Calculation
+# Calculate CPU utilization
 # Read /proc/stat file (for first datapoint)
-read cpu user nice system idle iowait irq softirq steal guest< /proc/stat
-
+read cpu user nice system idle iowait irq softirq steal guest < /proc/stat
 # compute active and total utilizations
 cpu_active_prev=$((user+system+nice+softirq+steal))
 cpu_total_prev=$((user+system+nice+softirq+steal+idle+iowait))
-
 sleep 0.3
-
 # Read /proc/stat file (for second datapoint)
-read cpu user nice system idle iowait irq softirq steal guest< /proc/stat
-
+read cpu user nice system idle iowait irq softirq steal guest < /proc/stat
 # compute active and total utilizations
 cpu_active_cur=$((user+system+nice+softirq+steal))
 cpu_total_cur=$((user+system+nice+softirq+steal+idle+iowait))
-
 # compute CPU utilization (%)
 cpu_util=$((100*( cpu_active_cur-cpu_active_prev ) / (cpu_total_cur-cpu_total_prev) ))
 
-# Checks system uptime
+# Get uptime in human-readable format
 if [[ "$(uptime | grep -iq day ; echo $?)" == "0" ]] ; then
     # first logic gate, if the system has been online for at least a day
     if [[ "$(uptime | grep -iq min ; echo $?)" == "0" ]] ; then
@@ -248,131 +680,239 @@ else # logic gate for if the system has been online less than a day but more tha
     fi
 fi
 
-
-# Checks CPU temperature
-cputemp=$(printf "%d" $(sensors | grep -m 1 Core\ 0 | awk '{print $3}') 2> /dev/null)
-# Checks CPU and CXPS temperatures,changes output text to warn user if temperatures
-# are too high (greater than 65°C is considered hot)
-if [[ "$cputemp" -gt "65" ]] ; then
-    cputemp="${ong}${blk}${cputemp}°C${dfl}"
-else
-    cputemp="${cputemp}°C"
+# Get additional information if enabled
+if [ "$show_gpu_info" = true ]; then
+  get_gpu_info
 fi
 
-################################
-
-# Check for release upgrade on Debian
-if [ -x /usr/lib/ubuntu-release-upgrader/release-upgrade-motd ]; then
-    if [ -f /var/lib/ubuntu-release-upgrader/release-upgrade-available ] ; then
-        release_upgrade="$(cat /var/lib/ubuntu-release-upgrader/release-upgrade-available)"
-    fi
-fi
-if [ "$(lsb_release -sd | cut -d ' ' -f4)" = "(development" ]; then
-    unset release_upgrade
+if [ "$show_container_info" = true ]; then
+  get_container_info
 fi
 
-################################
+if [ "$show_service_status" = true ]; then
+  get_service_status
+fi
+
+if [ "$show_security_info" = true ]; then
+  get_security_info
+fi
+
+if [ "$show_smart_status" = true ]; then
+  get_smart_status
+fi
+
+if [ "$show_top_processes" = true ]; then
+  get_top_processes
+fi
 
 # Check for fsck message
 if [ -x /usr/lib/update-notifier/update-motd-fsck-at-reboot ]; then
     fsck_needed="$(exec /usr/lib/update-notifier/update-motd-fsck-at-reboot)"
 fi
 
-################################
-
 # Check if reboot required by updates
+reboot_required=""
 if [ -f /var/run/reboot-required ]; then
     reboot_required=$(cat /var/run/reboot-required)
 fi
 
-################################
-
 # Network display and filtering
-
 declare -a adapters=()
 declare -a ips=()
 declare -a macs=()
 declare -a ifups=()
-for device in $(ls /sys/class/net/ | grep -v "$filtered_adapters") ; do
+for device in $(ls /sys/class/net/ 2>/dev/null | grep -v "$filtered_adapters"); do
   adapters+=($device)
-  _ip=$(ip -o -f inet addr show $device | awk '{print $4}' | cut -d/ -f 1 | head -n 1)
-  if valid-ip $_ip ; then
+  _ip=$(ip -o -f inet addr show $device 2>/dev/null | awk '{print $4}' | cut -d/ -f 1 | head -n 1)
+  if valid-ip $_ip; then
     ips+=("$_ip")
     ifups+=("up")
   else
     ips+=("${red}disconnected${dfl}")
     ifups+=("down")
   fi
-  macs+=("$(cat /sys/class/net/${device}/address)")
+  if [ -f /sys/class/net/${device}/address ]; then
+    macs
+    macs+=("$(cat /sys/class/net/${device}/address)")
+  else
+    macs+=("unknown")
+  fi
 done
 
-################################
+# Get public IP address using multiple fallbacks
+get_wan_ip() {
+  wan_ip="Unavailable"
+  
+  # Try multiple services with a timeout to avoid hanging
+  if command -v curl >/dev/null 2>&1; then
+    wan_ip=$(timeout 2 curl -s ifconfig.me 2>/dev/null || \
+             timeout 2 curl -s icanhazip.com 2>/dev/null || \
+             timeout 2 curl -s ipecho.net/plain 2>/dev/null || \
+             timeout 2 curl -s api.ipify.org 2>/dev/null || \
+             echo "Unavailable")
+  elif command -v wget >/dev/null 2>&1; then
+    wan_ip=$(timeout 2 wget -qO- ifconfig.me 2>/dev/null || \
+             timeout 2 wget -qO- icanhazip.com 2>/dev/null || \
+             timeout 2 wget -qO- ipecho.net/plain 2>/dev/null || \
+             timeout 2 wget -qO- api.ipify.org 2>/dev/null || \
+             echo "Unavailable")
+  elif command -v fetch >/dev/null 2>&1; then
+    wan_ip=$(timeout 2 fetch -qo- ifconfig.me 2>/dev/null || \
+             timeout 2 fetch -qo- icanhazip.com 2>/dev/null || \
+             timeout 2 fetch -qo- ipecho.net/plain 2>/dev/null || \
+             timeout 2 fetch -qo- api.ipify.org 2>/dev/null || \
+             echo "Unavailable")
+  fi
+  
+  echo "$wan_ip"
+}
+
+# Run as a background process to avoid hanging the login
+wan_ip=$(get_wan_ip &)
 
 # Disk array setup
 declare -a logicals=()
 declare -a mounts=()
 declare -a usages=()
 declare -a freespaces=()
-diskinfo=$(/bin/df -h | grep "$allowed_disk_prefixes_string" | grep -v "$disallowed_disk_prefixes_string")
-logicals=($(cut -d ' ' -f1 <<< "${diskinfo}"))
-mounts=($(awk '{print $6}' <<< "${diskinfo}"))
-usages=($(awk '{print $5}' <<< "${diskinfo}"))
-freespaces=($(awk '{print $4}' <<< "${diskinfo}"))
+diskinfo=$(/bin/df -h | grep -E "$allowed_disk_prefixes_string" | grep -v -E "$disallowed_disk_prefixes_string")
+logicals=($(echo "$diskinfo" | awk '{print $1}'))
+mounts=($(echo "$diskinfo" | awk '{print $6}'))
+usages=($(echo "$diskinfo" | awk '{print $5}'))
+freespaces=($(echo "$diskinfo" | awk '{print $4}'))
 
-################################
-#check for updates
-if [ -f /usr/lib/update-notifier/apt-check ] ; then
-  packages=$(/usr/lib/update-notifier/apt-check --human-readable | grep "can be")
-  supdates=$(/usr/lib/update-notifier/apt-check --human-readable | grep "security updates" | cut -d '.' -f1)
-  packages=${packages%%\.*}
-  supdates=${supdates%%\.*}
-fi
-# Check for updates
-if [[ $(echo ${packages} | grep -c updates) != 1 ]] || [ -z "${supdates}" ] || [ -z "${release_upgrade}" ] ; then
-#if [[ $(echo ${packages} | grep -c ^0\ updates) == 1 ]] ; then
-  need_updates=false
-else
-  need_updates=true
-fi
+# Add color to disk usage if more than 90%
+for i in "${!usages[@]}"; do
+  usage="${usages[$i]}"
+  percentage="${usage%\%}"
+  if [[ "$percentage" -gt "90" ]]; then
+    usages[$i]="${lrd}${usage}${dfl}"
+  elif [[ "$percentage" -gt "75" ]]; then
+    usages[$i]="${ong}${usage}${dfl}"
+  fi
+done
 
-# Begin echo out of formatted table with aggregated information 
+###############################################
+# Display the formatted information
+###############################################
 
 boxtop
 boxline ""
-boxline "${bld}${unl}Location:${dfl}  ${grn}${unl}$location${dfl}"
+boxline "${bld}${unl}System Information:${dfl}  ${grn}${unl}$location${dfl}"
+boxline "	${bld}OS:${dfl} ${ong}${software_version}${dfl} | ${bld}Kernel:${dfl} ${pur}${image_version}${dfl}"
+boxline "	${bld}Uptime:${dfl} ${s_uptime}"
+
+# Container information
+if [ "$show_container_info" = true ] && [[ "$in_container" = true || "$have_containers" = true ]]; then
+  boxline ""
+  boxline "${bld}${unl}Container/VM Information:${dfl}"
+  if [ "$in_container" = true ]; then
+    boxline "	${bld}Running in:${dfl} ${ylw}${container_type}${dfl}"
+  fi
+  if [ "$have_containers" = true ]; then
+    boxline "	${bld}Container Status:${dfl} ${container_stats}"
+  fi
+fi
+
+# Network information
 boxline ""
+boxline "${bld}${unl}Network Information:${dfl}"
 # Echo out network arrays
-for ((i=0; i<"${#adapters[@]}"; i++ )) ; do
-  if [[ $show_disconnected != true ]] ; then
-    if [[ ${ifups[$i]} == up ]] ; then
-	    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
+for ((i=0; i<"${#adapters[@]}"; i++ )); do
+  if [[ $show_disconnected != true ]]; then
+    if [[ ${ifups[$i]} == up ]]; then
+      boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
     fi
-  # else
-  #   boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
+  else
+    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
   fi
 done
-boxline "	WAN IP:	${ylw}${wan_ip}${dfl}"
+boxline "	${bld}WAN IP:${dfl}	${ylw}${wan_ip}${dfl}"
+
+# System status
 boxline ""
-boxline "${bld}${unl}Linux Info${dfl}"
-boxline "	Kernel Ver: ${pur}${image_version}${dfl}	|  OS Ver: ${ong}${software_version}${dfl}"
-boxline ""
-boxline "${bld}${unl}System Status${dfl}"
-boxline "	System Load: ${load_averages}"
-boxline "	CPU Temp: ${lbl}${cputemp}${dfl}	|  Utilization: ${lrd}${cpu_util}%${dfl}"
-boxline "	Memory used/total: ${mem_usage}"
-boxline "	${unl}Disk Info:${dfl}"
+boxline "${bld}${unl}System Resources:${dfl}"
+boxline "	${bld}CPU Load:${dfl} ${load_averages}"
+boxline "	${bld}CPU Temp:${dfl} ${lbl}${cputemp}${dfl} | ${bld}Utilization:${dfl} ${lrd}${cpu_util}%${dfl}"
+
+# GPU information if available
+if [ "$show_gpu_info" = true ] && [ "$have_gpu" = true ]; then
+  boxline "	${bld}GPU:${dfl} ${ylw}${gpu_info}${dfl}"
+  if [ "$gpu_temp" != "N/A" ]; then
+    boxline "	${bld}GPU Temp:${dfl} ${lbl}${gpu_temp}${dfl} | ${bld}Utilization:${dfl} ${lrd}${gpu_util}%${dfl}"
+  fi
+fi
+
+# Memory usage
+boxline "	${bld}Memory:${dfl} ${mem_usage} | ${bld}Swap:${dfl} ${swap_usage}"
+
+# Storage info
+boxline "	${bld}${unl}Disk Info:${dfl}"
 boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
-for ((i=0; i<"${#logicals[@]}" ; i++ )) ; do
-  boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' ${usages[$i]} ${freespaces[$i]} ${mounts[$i]} ${logicals[$i]})"
+for ((i=0; i<"${#logicals[@]}" ; i++ )); do
+  boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' "${usages[$i]}" "${freespaces[$i]}" "${mounts[$i]}" "${logicals[$i]}")"
 done
-boxline ""
-if [[ "$need_updates" == "true" ]] ; then
-  boxline "${bld}${unl}Updates${dfl}"
+
+# SMART status if enabled and issues detected
+if [ "$show_smart_status" = true ] && [ "$have_smart_issues" = true ]; then
+  boxline ""
+  boxline "${bld}${unl}Disk Health:${dfl}"
+  boxline "	${smart_status}"
+fi
+
+# Service status if enabled and issues detected
+if [ "$show_service_status" = true ] && [ "$have_service_issues" = true ]; then
+  boxline ""
+  boxline "${bld}${unl}Service Status:${dfl}"
+  boxline "	${service_status}"
+fi
+
+# Security information if enabled
+if [ "$show_security_info" = true ]; then
+  boxline ""
+  boxline "${bld}${unl}Security Information:${dfl}"
+  boxline "	${bld}Failed logins (24h):${dfl} ${failed_logins}"
+  boxline "	${bld}Active SSH sessions:${dfl} ${ssh_sessions}"
+  if [ "$last_login" != "N/A" ]; then
+    boxline "	${bld}Last login:${dfl} ${last_login}"
+  fi
+  boxline "	${bld}Firewall:${dfl} ${firewall_status}"
+fi
+
+# Top processes if enabled
+if [ "$show_top_processes" = true ]; then
+  boxline ""
+  boxline "${bld}${unl}Top CPU Processes:${dfl}"
+  echo "$top_cpu" | while IFS= read -r line; do
+    boxline "	$line"
+  done
+  
+  boxline ""
+  boxline "${bld}${unl}Top Memory Processes:${dfl}"
+  echo "$top_mem" | while IFS= read -r line; do
+    boxline "	$line"
+  done
+fi
+
+# Update information if needed
+if [[ "$need_updates" == "true" ]]; then
+  boxline ""
+  boxline "${bld}${unl}Updates:${dfl}"
   boxline "	${packages}"
-  boxline "	${supdates}"
-  boxline "	${release_upgrade}"
+  if [ ! -z "$supdates" ]; then
+    boxline "	${supdates}"
+  fi
+  if [ ! -z "$release_upgrade" ]; then
+    boxline "	${release_upgrade}"
+  fi
 fi
-if [ -z "${fsck_needed}" ] || [ -z "${reboot_required}" ] ; then
-  boxline "	${fsck_needed} ${reboot_required} "
+
+# System maintenance notifications
+if [ ! -z "${fsck_needed}" ] || [ ! -z "${reboot_required}" ]; then
+  boxline ""
+  boxline "${bld}${unl}System Maintenance:${dfl}"
+  boxline "	${fsck_needed} ${reboot_required}"
 fi
+
+boxline ""
 boxbottom
