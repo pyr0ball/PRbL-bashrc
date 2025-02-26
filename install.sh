@@ -126,8 +126,8 @@ fi
 # Script-specific Funcitons
 #-----------------------------------------------------------------#
 
-script-title(){
-    boxborder \
+script-title() {
+    format_boxborder --center --box-type=double \
     "${red}(_____ ${lrd}(_____  ${ylw}| |   ${ong}| |        ${lyl}(_____)           _        | | |            ${dfl}" \
     "${red} _____) )${lrd}____) ) ${ylw}| _ ${ong}| |        ${lyl}   _   ____   ___| |_  ____| | | ____  ____ ${dfl}" \
     "${red}|  ____${lrd}(_____ (${ylw}| ||  ${ong}| |        ${lyl}  | | |  _ \ /___)  _)/ _  | | |/ _  )/ ___)${dfl}" \
