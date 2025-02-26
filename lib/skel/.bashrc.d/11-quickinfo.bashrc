@@ -10,8 +10,8 @@
 #           Enhanced for multi-distro compatibility           #
 ###############################################################
 
-quickinfo_version=3.0.0
-prbl_functons_req_ver=2.0.0
+quickinfo_version=4.0.0
+prbl_functons_req_ver=2.1.0
 
 # Source PRbL Functions locally or retrieve from online
 if [ ! -z $prbl_functions ] ; then
@@ -732,7 +732,7 @@ for device in $(ls /sys/class/net/ 2>/dev/null | grep -v "$filtered_adapters"); 
     ifups+=("down")
   fi
   if [ -f /sys/class/net/${device}/address ]; then
-    macs
+    macs=()
     macs+=("$(cat /sys/class/net/${device}/address)")
   else
     macs+=("unknown")
