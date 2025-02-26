@@ -294,7 +294,20 @@ userinstall(){
         take-backup ${HOME}/.bashrc
         echo -e "$bashrc_append" >> ${HOME}/.bashrc && boxborder "bashrc.d setup installed..." || warn "Malformed append on ${lbl}${HOME}/.bashrc${dfl}. Check this file for errors"
     fi
-    
+
+    # Create the quickinfo cache directory
+    #mkdir -p $HOME/.quickinfo
+    export prbl_functions="${installdir}/functions"
+
+    # If all required dependencies are installed, launch initial cache creation
+    #if [[ "$bins_missing" == "false" ]] ; then
+    #    bash $HOME/.bashrc.d/11-quickinfo.bashrc
+    #fi
+    #clear
+
+    # launch extra installs
+    extras-menu
+
     if [[ $dry_run != true ]] ; then
         boxborder "${grn}QuickInfo Banner installed successfully${dfl}"
         boxline "You may need to log out and back in to see the banner"
