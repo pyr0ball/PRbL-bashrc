@@ -477,13 +477,13 @@ get_container_info() {
   fi
   
   # Get LXC container stats if LXC is installed
-  if command -v lxc >/dev/null 2>&1 && [ "$in_container" = false ]; then
-    container_count=$(lxc list --format csv -c s | grep -c RUNNING 2>/dev/null || echo "0")
-    if [ "$container_count" -gt 0 ]; then
-      container_stats="$container_stats, $container_count running LXC containers"
-      have_containers=true
-    fi
-  fi
+  # if command -v lxc >/dev/null 2>&1 && [ "$in_container" = false ]; then
+  #   container_count=$(lxc list --format csv -c s | grep -c RUNNING 2>/dev/null || echo "0")
+  #   if [ "$container_count" -gt 0 ]; then
+  #     container_stats="$container_stats, $container_count running LXC containers"
+  #     have_containers=true
+  #   fi
+  # fi
 }
 
 ################################
@@ -530,6 +530,10 @@ get_service_status() {
 # Get Security Information
 ################################
 
+################################
+# Get Security Information
+################################
+
 get_security_info() {
   failed_logins=0
   last_login="N/A"
@@ -555,17 +559,47 @@ get_security_info() {
     ssh_sessions=$(who | grep -c "pts")
   fi
   
-  # Get firewall status
+  # Get firewall status without requiring root privileges
   if command -v ufw >/dev/null 2>&1; then
-    firewall_status=$(ufw status | head -n 1)
-  elif command -v firewall-cmd >/dev/null 2>&1; then
-    firewall_status="firewalld: $(firewall-cmd --state)"
-  elif command -v iptables >/dev/null 2>&1; then
-    iptables_rules=$(iptables -L -n | grep -c "REJECT\|DROP")
-    if [ $iptables_rules -gt 0 ]; then
-      firewall_status="iptables: $iptables_rules blocking rules active"
+    # Check if ufw is loaded in kernel modules - doesn't require root
+    if lsmod | grep -q "^ufw"; then
+      # Check if there are any ufw rules by looking at iptables (if readable)
+      if [ -r /etc/ufw/user.rules ]; then
+        ufw_rules=$(grep -c "^-A" /etc/ufw/user.rules)
+        if [ $ufw_rules -gt 0 ]; then
+          firewall_status="UFW: likely active with $ufw_rules rules"
+        else
+          firewall_status="UFW: likely inactive (no rules found)"
+        fi
+      else
+        # Check status of ufw service without sudo
+        if systemctl is-active --quiet ufw 2>/dev/null; then
+          firewall_status="UFW: service running"
+        else
+          firewall_status="UFW: service not running"
+        fi
+      fi
     else
-      firewall_status="iptables: No blocking rules found"
+      firewall_status="UFW: module not loaded (inactive)"
+    fi
+  elif command -v firewall-cmd >/dev/null 2>&1; then
+    # For firewalld, check if the service is running
+    if systemctl is-active --quiet firewalld 2>/dev/null; then
+      firewall_status="firewalld: service running"
+    else
+      firewall_status="firewalld: service not running"
+    fi
+  elif command -v iptables >/dev/null 2>&1; then
+    # Check for iptables rules (non-root might not see all)
+    if iptables -L -n 2>/dev/null | grep -q "REJECT\|DROP"; then
+      firewall_status="iptables: active"
+    elif [ -r /etc/iptables/rules.v4 ] || [ -r /etc/sysconfig/iptables ]; then
+      # Check for saved rules files
+      firewall_status="iptables: likely active (rules file exists)"
+    elif systemctl is-active --quiet iptables 2>/dev/null; then
+      firewall_status="iptables: service running"
+    else
+      firewall_status="iptables: status unknown"
     fi
   else
     firewall_status="No firewall detected"
