@@ -800,7 +800,6 @@ for device in $(ls /sys/class/net/ 2>/dev/null | grep -v "$filtered_adapters"); 
     ifups+=("down")
   fi
   if [ -f /sys/class/net/${device}/address ]; then
-    macs=()
     macs+=("$(cat /sys/class/net/${device}/address)")
   else
     macs+=("unknown")
