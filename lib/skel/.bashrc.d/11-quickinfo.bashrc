@@ -14,7 +14,7 @@ quickinfo_version=4.0.0
 prbl_functons_req_ver=2.1.0
 
 # Source PRbL Functions locally or retrieve from online
-if [ ! -z $prbl_functions ] ; then
+if [ -f $prbl_functions ] ; then
     source $prbl_functions
 else
     if [ -f ${rundir}/functions ] ; then
@@ -55,20 +55,20 @@ filtered_adapters="lo"
 
 # Disks
 allowed_disk_prefixes=(
-  sd
-  md
-  mapper
-  nvme
-  mmcblk
-  root
-  vd  # For virtual disks (KVM/Xen)
-  xvd # For Xen virtual disks
+  "sd"
+  "md"
+  "mapper"
+  "nvme"
+  "mmcblk"
+  "root"
+  "vd"
+  "xvd"
 )
 
 disallowed_disk_prefixes=(
-  boot
-  snap # Exclude snap mounts
-  loop # Exclude loop devices
+  "boot"
+  "snap"
+  "loop"
 )
 
 # Settings for additional information display
@@ -84,17 +84,27 @@ critical_services="sshd nginx apache2 mysqld mariadb docker containerd kubelet c
 
 #######################################################
 # Do not change these unless you know what you're doing
-# convert array to grep string
-for prefix in "${allowed_disk_prefixes[@]}" ; do
-  allowed_disk_prefixes_string+="\\|$prefix"
-done
-# Remove the leading '\|' from the grep string
-allowed_disk_prefixes_string="${allowed_disk_prefixes_string:2}"
 
-for prefix in "${disallowed_disk_prefixes[@]}" ; do
-  disallowed_disk_prefixes_string+="\\|$prefix"
+allowed_disk_prefixes_string=""
+disallowed_disk_prefixes_string=""
+
+# Build the allowed disk prefixes pattern
+for prefix in "${allowed_disk_prefixes[@]}"; do
+  if [ -z "$allowed_disk_prefixes_string" ]; then
+    allowed_disk_prefixes_string="$prefix"
+  else
+    allowed_disk_prefixes_string+="\\|$prefix"
+  fi
 done
-disallowed_disk_prefixes_string="${disallowed_disk_prefixes_string:2}"
+
+# Build the disallowed disk prefixes pattern
+for prefix in "${disallowed_disk_prefixes[@]}"; do
+  if [ -z "$disallowed_disk_prefixes_string" ]; then
+    disallowed_disk_prefixes_string="$prefix"
+  else
+    disallowed_disk_prefixes_string+="\\|$prefix"
+  fi
+done
 
 # check PRbL functions version
 if command -v vercomp >/dev/null 2>&1; then
@@ -486,6 +496,34 @@ get_container_info() {
   # fi
 }
 
+# Get public IP address using multiple fallbacks
+get_wan_ip() {
+  wan_ip="Unavailable"
+  
+  # Try multiple services with a timeout to avoid hanging
+  if command -v curl >/dev/null 2>&1; then
+    wan_ip=$(timeout 2 curl -s ifconfig.me 2>/dev/null || \
+             timeout 2 curl -s icanhazip.com 2>/dev/null || \
+             timeout 2 curl -s ipecho.net/plain 2>/dev/null || \
+             timeout 2 curl -s api.ipify.org 2>/dev/null || \
+             echo "Unavailable")
+  elif command -v wget >/dev/null 2>&1; then
+    wan_ip=$(timeout 2 wget -qO- ifconfig.me 2>/dev/null || \
+             timeout 2 wget -qO- icanhazip.com 2>/dev/null || \
+             timeout 2 wget -qO- ipecho.net/plain 2>/dev/null || \
+             timeout 2 wget -qO- api.ipify.org 2>/dev/null || \
+             echo "Unavailable")
+  elif command -v fetch >/dev/null 2>&1; then
+    wan_ip=$(timeout 2 fetch -qo- ifconfig.me 2>/dev/null || \
+             timeout 2 fetch -qo- icanhazip.com 2>/dev/null || \
+             timeout 2 fetch -qo- ipecho.net/plain 2>/dev/null || \
+             timeout 2 fetch -qo- api.ipify.org 2>/dev/null || \
+             echo "Unavailable")
+  fi
+  
+  echo "$wan_ip"
+}
+
 ################################
 # Get Service Status
 ################################
@@ -525,10 +563,6 @@ get_service_status() {
     have_service_issues=false
   fi
 }
-
-################################
-# Get Security Information
-################################
 
 ################################
 # Get Security Information
@@ -773,34 +807,6 @@ for device in $(ls /sys/class/net/ 2>/dev/null | grep -v "$filtered_adapters"); 
   fi
 done
 
-# Get public IP address using multiple fallbacks
-get_wan_ip() {
-  wan_ip="Unavailable"
-  
-  # Try multiple services with a timeout to avoid hanging
-  if command -v curl >/dev/null 2>&1; then
-    wan_ip=$(timeout 2 curl -s ifconfig.me 2>/dev/null || \
-             timeout 2 curl -s icanhazip.com 2>/dev/null || \
-             timeout 2 curl -s ipecho.net/plain 2>/dev/null || \
-             timeout 2 curl -s api.ipify.org 2>/dev/null || \
-             echo "Unavailable")
-  elif command -v wget >/dev/null 2>&1; then
-    wan_ip=$(timeout 2 wget -qO- ifconfig.me 2>/dev/null || \
-             timeout 2 wget -qO- icanhazip.com 2>/dev/null || \
-             timeout 2 wget -qO- ipecho.net/plain 2>/dev/null || \
-             timeout 2 wget -qO- api.ipify.org 2>/dev/null || \
-             echo "Unavailable")
-  elif command -v fetch >/dev/null 2>&1; then
-    wan_ip=$(timeout 2 fetch -qo- ifconfig.me 2>/dev/null || \
-             timeout 2 fetch -qo- icanhazip.com 2>/dev/null || \
-             timeout 2 fetch -qo- ipecho.net/plain 2>/dev/null || \
-             timeout 2 fetch -qo- api.ipify.org 2>/dev/null || \
-             echo "Unavailable")
-  fi
-  
-  echo "$wan_ip"
-}
-
 # Run as a background process to avoid hanging the login
 wan_ip=$(get_wan_ip &)
 
@@ -809,7 +815,7 @@ declare -a logicals=()
 declare -a mounts=()
 declare -a usages=()
 declare -a freespaces=()
-diskinfo=$(/bin/df -h | grep -E "$allowed_disk_prefixes_string" | grep -v -E "$disallowed_disk_prefixes_string")
+diskinfo=$(/bin/df -h | grep "$allowed_disk_prefixes_string" | grep -v "$disallowed_disk_prefixes_string")
 logicals=($(echo "$diskinfo" | awk '{print $1}'))
 mounts=($(echo "$diskinfo" | awk '{print $6}'))
 usages=($(echo "$diskinfo" | awk '{print $5}'))
@@ -882,9 +888,9 @@ boxline "	${bld}Memory:${dfl} ${mem_usage} | ${bld}Swap:${dfl} ${swap_usage}"
 
 # Storage info
 boxline "	${bld}${unl}Disk Info:${dfl}"
-boxline "${unl}$(printf '\t|%-4s\t%-4s\t%-4s\t%-4s\n' Usage Free Mount Volumes)${dfl}"
+boxline "${unl}$(printf '\t|%-10s\t%-10s\t%-12s\t%-20s\n' Usage Free Mount Volumes)${dfl}"
 for ((i=0; i<"${#logicals[@]}" ; i++ )); do
-  boxline "       $(printf '|%-4s\t%-4s\t%-4s\t%-4s\n' "${usages[$i]}" "${freespaces[$i]}" "${mounts[$i]}" "${logicals[$i]}")"
+  boxline "$(printf '\t|%-10s\t%-10s\t%-12s\t%-20s\n' "${usages[$i]}" "${freespaces[$i]}" "${mounts[$i]}" "${logicals[$i]}")"
 done
 
 # SMART status if enabled and issues detected
