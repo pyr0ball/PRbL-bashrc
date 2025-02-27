@@ -10,7 +10,7 @@
 #           Enhanced for multi-distro compatibility           #
 ###############################################################
 
-quickinfo_version=4.0.0
+quickinfo_version=4.1.1
 prbl_functons_req_ver=2.1.0
 
 # Source PRbL Functions locally or retrieve from online
