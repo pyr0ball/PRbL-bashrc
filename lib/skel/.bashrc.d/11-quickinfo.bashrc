@@ -887,9 +887,26 @@ boxline "	${bld}Memory:${dfl} ${mem_usage} | ${bld}Swap:${dfl} ${swap_usage}"
 
 # Storage info
 boxline "	${bld}${unl}Disk Info:${dfl}"
-boxline "${unl}$(printf '\t|%-10s\t%-10s\t%-12s\t%-20s\n' Usage Free Mount Volumes)${dfl}"
-for ((i=0; i<"${#logicals[@]}" ; i++ )); do
-  boxline "$(printf '\t|%-10s\t%-10s\t%-12s\t%-20s\n' "${usages[$i]}" "${freespaces[$i]}" "${mounts[$i]}" "${logicals[$i]}")"
+boxline "	|${unl}Usage    Free        Mount         Volumes${dfl}"
+boxline "	|-----------------------------------------------"
+
+# Loop through each disk and display info with precise column widths
+for ((i=0; i<"${#logicals[@]}"; i++)); do
+  # Extract the usage text without color codes for formatting
+  usage_plain=$(echo "${usages[$i]}" | sed 's/\x1b\[[0-9;]*m//g')
+  
+  # Format the columns
+  usage_col=$(printf "%-8s" "$usage_plain")
+  free_col=$(printf "%-12s" "${freespaces[$i]}")
+  mount_col=$(printf "%-13s" "${mounts[$i]}")
+  volume_col="${logicals[$i]}"
+  
+  # Replace the plain text with the colored version, maintaining the same length
+  usage_col="${usages[$i]}$(printf '%*s' $((8 - ${#usage_plain})) '')"
+  
+  # Combine the formatted columns
+  formatted_line="|${usage_col}${free_col}${mount_col}${volume_col}"
+  boxline "	$formatted_line"
 done
 
 # SMART status if enabled and issues detected
