@@ -257,14 +257,24 @@ check_for_updates() {
         # If apt-check isn't available, try an alternative method
         if command -v apt >/dev/null 2>&1; then
           # This method requires root/sudo, will be empty if not available
+          # FIX: Properly capture and process the apt list output
           apt_output=$(apt list --upgradable 2>/dev/null)
           if [ $? -eq 0 ]; then
-            packages_available=$(echo "$apt_output" | grep -c "upgradable" || echo "0")
-            if [ "$packages_available" -gt 0 ]; then
-              packages="${packages_available} updates can be installed"
-              need_updates=true
+            # Only count lines that actually contain "upgradable" to avoid parsing errors
+            packages_count=$(echo "$apt_output" | grep -c "upgradable" || echo "0")
+            
+            # Ensure we have a clean numeric value
+            if [[ "$packages_count" =~ ^[0-9]+$ ]]; then
+              packages_available=$packages_count
+              
+              if [ $packages_available -gt 0 ]; then
+                packages="${packages_available} updates can be installed"
+                need_updates=true
+              else
+                packages="0 updates available"
+              fi
             else
-              packages="0 updates available"
+              packages="Error checking updates"
             fi
           else
             packages="Need privileges to check updates"
@@ -278,12 +288,19 @@ check_for_updates() {
     dnf|yum)
       # Check if we can run as non-root
       if timeout 5 $package_manager check-update -q &>/dev/null; then
-        packages_available=$($update_check_cmd)
-        if [ $packages_available -gt 0 ]; then
-          packages="${packages_available} updates can be installed"
-          need_updates=true
+        # Capture the output in a variable and ensure it's a valid number
+        check_output=$($update_check_cmd)
+        if [[ "$check_output" =~ ^[0-9]+$ ]]; then
+          packages_available=$check_output
+          
+          if [ $packages_available -gt 0 ]; then
+            packages="${packages_available} updates can be installed"
+            need_updates=true
+          else
+            packages="0 updates available"
+          fi
         else
-          packages="0 updates available"
+          packages="Error checking updates"
         fi
       else
         packages="Need root to check updates"
@@ -292,12 +309,19 @@ check_for_updates() {
       
     pacman)
       if pacman -Qu &>/dev/null; then
-        packages_available=$(pacman -Qu | wc -l)
-        if [ $packages_available -gt 0 ]; then
-          packages="${packages_available} updates can be installed"
-          need_updates=true
+        # Ensure we get a clean numeric value
+        check_output=$(pacman -Qu | wc -l)
+        if [[ "$check_output" =~ ^[0-9]+$ ]]; then
+          packages_available=$check_output
+          
+          if [ $packages_available -gt 0 ]; then
+            packages="${packages_available} updates can be installed"
+            need_updates=true
+          else
+            packages="0 updates available"
+          fi
         else
-          packages="0 updates available"
+          packages="Error checking updates"
         fi
       else
         packages="Need to run 'pacman -Sy' to check updates"
@@ -306,12 +330,19 @@ check_for_updates() {
       
     zypper)
       if timeout 5 zypper list-updates &>/dev/null; then
-        packages_available=$(zypper list-updates | grep '^v ' | wc -l)
-        if [ $packages_available -gt 0 ]; then
-          packages="${packages_available} updates can be installed"
-          need_updates=true
+        # Ensure we get a clean numeric value
+        check_output=$(zypper list-updates | grep '^v ' | wc -l)
+        if [[ "$check_output" =~ ^[0-9]+$ ]]; then
+          packages_available=$check_output
+          
+          if [ $packages_available -gt 0 ]; then
+            packages="${packages_available} updates can be installed"
+            need_updates=true
+          else
+            packages="0 updates available"
+          fi
         else
-          packages="0 updates available"
+          packages="Error checking updates"
         fi
       else
         packages="Need root to check updates"
@@ -320,12 +351,19 @@ check_for_updates() {
       
     apk)
       if timeout 5 apk version -v &>/dev/null; then
-        packages_available=$(apk version -v | grep -c upgradable)
-        if [ $packages_available -gt 0 ]; then
-          packages="${packages_available} updates can be installed"
-          need_updates=true
+        # Ensure we get a clean numeric value
+        check_output=$(apk version -v | grep -c upgradable)
+        if [[ "$check_output" =~ ^[0-9]+$ ]]; then
+          packages_available=$check_output
+          
+          if [ $packages_available -gt 0 ]; then
+            packages="${packages_available} updates can be installed"
+            need_updates=true
+          else
+            packages="0 updates available"
+          fi
         else
-          packages="0 updates available"
+          packages="Error checking updates"
         fi
       else
         packages="Need root to check updates"
@@ -346,6 +384,7 @@ check_for_updates() {
     fi
   fi
 }
+
 ################################
 # CPU Temperature
 ################################
