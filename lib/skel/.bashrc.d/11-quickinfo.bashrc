@@ -219,33 +219,58 @@ check_for_updates() {
   case $package_manager in
     apt)
       if [ -f /usr/lib/update-notifier/apt-check ]; then
-        packages_available=$(/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f1)
-        security_updates=$(/usr/lib/update-notifier/apt-check 2>&1 | cut -d';' -f2)
+        # Capture both stdout and stderr, and handle malformed output
+        apt_check_output=$(/usr/lib/update-notifier/apt-check 2>&1)
         
-        if [ $packages_available -gt 0 ]; then
-          packages="${packages_available} updates can be installed"
-          need_updates=true
+        # Validate that we have a proper semicolon-separated output
+        if [[ "$apt_check_output" == *";"* ]]; then
+          packages_available=$(echo "$apt_check_output" | cut -d';' -f1)
+          security_updates=$(echo "$apt_check_output" | cut -d';' -f2)
+          
+          # Validate that packages_available is a valid number
+          if [[ "$packages_available" =~ ^[0-9]+$ ]]; then
+            if [ $packages_available -gt 0 ]; then
+              packages="${packages_available} updates can be installed"
+              need_updates=true
+            else
+              packages="0 updates available"
+            fi
+          else
+            packages="Error parsing update count"
+          fi
+          
+          # Validate that security_updates is a valid number
+          if [[ "$security_updates" =~ ^[0-9]+$ ]]; then
+            if [ $security_updates -gt 0 ]; then
+              supdates="${security_updates} security updates"
+              need_updates=true
+            else
+              supdates="0 security updates"
+            fi
+          else
+            supdates="Error parsing security updates"
+          fi
         else
-          packages="0 updates available"
-        fi
-        
-        if [ $security_updates -gt 0 ]; then
-          supdates="${security_updates} security updates"
-          need_updates=true
-        else
-          supdates="0 security updates"
+          packages="Invalid update-notifier output"
         fi
       else
         # If apt-check isn't available, try an alternative method
         if command -v apt >/dev/null 2>&1; then
           # This method requires root/sudo, will be empty if not available
-          packages_available=$(apt list --upgradable 2>/dev/null | grep -c upgradable || echo "unknown")
-          if [[ "$packages_available" != "unknown" && $packages_available -gt 0 ]]; then
-            packages="${packages_available} updates can be installed"
-            need_updates=true
+          apt_output=$(apt list --upgradable 2>/dev/null)
+          if [ $? -eq 0 ]; then
+            packages_available=$(echo "$apt_output" | grep -c "upgradable" || echo "0")
+            if [ "$packages_available" -gt 0 ]; then
+              packages="${packages_available} updates can be installed"
+              need_updates=true
+            else
+              packages="0 updates available"
+            fi
           else
-            packages="unknown updates available"
+            packages="Need privileges to check updates"
           fi
+        else
+          packages="apt not available"
         fi
       fi
       ;;
@@ -321,7 +346,6 @@ check_for_updates() {
     fi
   fi
 }
-
 ################################
 # CPU Temperature
 ################################
