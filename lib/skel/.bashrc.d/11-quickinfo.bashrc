@@ -10,7 +10,7 @@
 #           Enhanced for multi-distro compatibility           #
 ###############################################################
 
-quickinfo_version=4.1.1
+quickinfo_version=4.1.2
 prbl_functons_req_ver=2.1.0
 
 # Source PRbL Functions locally or retrieve from online
@@ -880,17 +880,42 @@ fi
 # Network information
 boxline ""
 boxline "${bld}${unl}Network Information:${dfl}"
-# Echo out network arrays
+boxline "	|${unl}Interface       IP Address           MAC Address${dfl}"
+boxline "	|-------------------------------------------------------"
+
+# Echo out network arrays with consistent spacing
 for ((i=0; i<"${#adapters[@]}"; i++ )); do
-  if [[ $show_disconnected != true ]]; then
-    if [[ ${ifups[$i]} == up ]]; then
-      boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
-    fi
-  else
-    boxline "	${adapters[$i]}: ${cyn}${ips[$i]}${dfl} |  ${blu}${macs[$i]}${dfl}"
+  # Skip displaying disconnected interfaces if flag is false
+  if [[ $show_disconnected != true ]] && [[ ${ifups[$i]} != "up" ]]; then
+    continue
   fi
+  
+  # Extract plain text without color codes for formatting
+  ip_plain=$(echo "${ips[$i]}" | sed 's/\x1b\[[0-9;]*m//g')
+  
+  # Format columns with fixed widths, adding colors as requested
+  interface_col=$(printf "${cyn}%-15s${dfl}" "${adapters[$i]}")
+  
+  # Handle IP color - yellow for connected, keep existing red for disconnected
+  if [[ ${ifups[$i]} == "up" ]]; then
+    # For connected IPs, use yellow instead of cyan
+    ip_col=$(printf "${ylw}%-19s${dfl}" "$ip_plain")
+  else
+    # For disconnected IPs, keep the red color but maintain spacing
+    ip_col="${ips[$i]}$(printf '%*s' $((19 - ${#ip_plain})) '')"
+  fi
+  
+  # Add light blue for MAC addresses
+  mac_col=$(printf "${lbl}%s${dfl}" "${macs[$i]}")
+  
+  # Combine the formatted columns
+  formatted_line="|${interface_col}${ip_col}${mac_col}"
+  boxline "	$formatted_line"
 done
-boxline "	${bld}WAN IP:${dfl}	${ylw}${wan_ip}${dfl}"
+
+# Display WAN IP separately
+boxline "	|-------------------------------------------------------"
+boxline "	${bld}WAN IP:${dfl}	${grn}${wan_ip}${dfl}"
 
 # System status
 boxline ""
