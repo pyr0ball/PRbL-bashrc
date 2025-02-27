@@ -78,6 +78,8 @@ show_service_status=true
 show_security_info=true
 show_smart_status=false # Requires root privileges or sudo config
 show_top_processes=true
+show_power_info=true # Enable power monitoring (requires appropriate hardware/sensors)
+show_power_details=false
 
 # Services to check (space separated list)
 critical_services="sshd nginx apache2 mysqld mariadb docker containerd kubelet cron"
@@ -1021,6 +1023,40 @@ if [ "$show_security_info" = true ]; then
     boxline "	${bld}Last login:${dfl} ${last_login}"
   fi
   boxline "	${bld}Firewall:${dfl} ${firewall_status}"
+fi
+
+# Power information if enabled
+if [ "$show_power_info" = true ]; then
+  get_power_info
+  if [[ "$system_power" != "N/A" || "$cpu_power" != "N/A" || "$gpu_power" != "N/A" || "$battery_power" != "N/A" ]]; then
+    boxline ""
+    boxline "${bld}${unl}Power Usage:${dfl}"
+    
+    if [[ "$system_power" != "N/A" ]]; then
+      boxline "	${bld}System:${dfl} ${ong}${system_power}${dfl}"
+    fi
+    
+    if [[ "$cpu_power" != "N/A" ]]; then
+      boxline "	${bld}CPU:${dfl} ${lrd}${cpu_power}${dfl}"
+    fi
+    
+    if [[ "$gpu_power" != "N/A" ]]; then
+      boxline "	${bld}GPU:${dfl} ${lrd}${gpu_power}${dfl}"
+    fi
+    
+    if [[ "$battery_power" != "N/A" ]]; then
+      boxline "	${bld}Battery:${dfl} ${ylw}${battery_power}${dfl}"
+    fi
+    
+    # Show detailed breakdown if requested
+    if [[ "$show_power_details" == "true" && ${#power_sources[@]} -gt 0 ]]; then
+      boxline "	${bld}${unl}Power Details:${dfl}"
+      
+      for ((i=0; i<${#power_sources[@]}; i++)); do
+        boxline "	$(printf "%-25s %3d%s" "${power_sources[$i]}:" "${power_values[$i]}" "${power_units[$i]}")"
+      done
+    fi
+  fi
 fi
 
 # Top processes if enabled
