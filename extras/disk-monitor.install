@@ -1,0 +1,300 @@
+#!/bin/bash
+# disk-monitor.install - PRbL Extra install script for Disk Health Monitoring System
+# Author: Alan "pyr0ball" Weinstock
+# Date: 2025-04-09
+
+# Parse PRbL-style flags from main installer
+while getopts "d:ri:h" OPTION; do
+    case "$OPTION" in
+        d) DEST_DIR="$OPTARG" ;;
+        r) REMOTE=true ;;
+        i) INSTALL_DIR="$OPTARG" ;;
+        h) 
+           boxborder "Usage: ./disk-monitor.install [-d destination_dir] [-r] [-i install_dir] [-h]" \
+                     "  -d: Destination directory for backup files" \
+                     "  -r: Enable remote installation" \
+                     "  -i: Installation directory" \
+                     "  -h: Show this help message"
+           exit 0
+           ;;
+    esac
+done
+
+# Set default install directory if not provided
+INSTALL_DIR=${INSTALL_DIR:-"/usr/local/bin"}
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVICE_NAME="disk-health-monitor"
+CONFIG_DIR="/etc/disk-health"
+LOG_DIR="/var/log/disk-health"
+DATA_DIR="/var/lib/disk-health"
+SYSTEMD_DIR="/etc/systemd/system"
+
+# Required packages - we'll use PRbL's install-packages function
+REQUIRED_PACKAGES="smartmontools mdadm sqlite3 sendmail jq curl"
+
+# Function to install the basic components
+install_base() {
+    set-boxtype "rounded"
+    boxtop
+    center "${bld}${grn}Installing Disk Health Monitoring System${dfl}"
+    boxbottom
+    
+    # Create necessary directories
+    boxline "${bld}Creating directories...${dfl}"
+    sudo mkdir -p "$INSTALL_DIR" "$CONFIG_DIR" "$LOG_DIR" "$DATA_DIR"
+    
+    # Install dependencies using PRbL function
+    boxline "${bld}Installing dependencies...${dfl}"
+    install-packages $REQUIRED_PACKAGES
+    
+    # Copy main script 
+    boxline "${bld}Installing monitoring script...${dfl}"
+    sudo cp "$SOURCE_DIR/disk-health-monitor.sh" "$INSTALL_DIR/"
+    sudo chmod +x "$INSTALL_DIR/disk-health-monitor.sh"
+    
+    # Setup basic configuration
+    if [ ! -f "$CONFIG_DIR/config.json" ]; then
+        boxline "${bld}Creating default configuration...${dfl}"
+        sudo bash -c "cat > $CONFIG_DIR/config.json" << 'EOF'
+{
+    "email_alerts": true,
+    "signal_alerts": false,
+    "telegram_alerts": false,
+    "alert_threshold": 20,
+    "email_recipient": "admin@example.com",
+    "signal_number": "",
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "check_interval_days": 1,
+    "history_retention_days": 365,
+    "ignore_disks": []
+}
+EOF
+    else
+        boxline "${ylw}Configuration already exists, preserving...${dfl}"
+    fi
+    
+    # Set permissions
+    sudo chmod 640 "$CONFIG_DIR/config.json"
+}
+
+# Function to create systemd service
+setup_systemd() {
+    boxline "${bld}Setting up systemd service...${dfl}"
+    
+    # Create service file
+    sudo bash -c "cat > $SYSTEMD_DIR/$SERVICE_NAME.service" << EOF
+[Unit]
+Description=Disk Health Monitoring System
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=$INSTALL_DIR/disk-health-monitor.sh
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Create timer file
+    sudo bash -c "cat > $SYSTEMD_DIR/$SERVICE_NAME.timer" << EOF
+[Unit]
+Description=Run Disk Health Monitoring System daily
+Requires=$SERVICE_NAME.service
+
+[Timer]
+Unit=$SERVICE_NAME.service
+OnCalendar=*-*-* 01:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+    
+    # Enable and start the timer
+    sudo systemctl daemon-reload
+    sudo systemctl enable "$SERVICE_NAME.timer"
+    sudo systemctl start "$SERVICE_NAME.timer"
+    boxline "${grn}Systemd service and timer configured successfully${dfl}"
+}
+
+# Function to configure notification settings
+configure_notifications() {
+    set-boxtype "norm"
+    boxtop
+    center "${bld}${blu}Configuring Notification Settings${dfl}"
+    boxbottom
+    
+    # Get email settings
+    boxline "Do you want to use email notifications? (y/n): "
+    read -p "" use_email
+    if [ "$use_email" = "y" ] || [ "$use_email" = "Y" ]; then
+        boxline "Enter email address for notifications [default: admin@example.com]: "
+        read -p "" email_recipient
+        email_recipient=${email_recipient:-"admin@example.com"}
+        email_alerts="true"
+    else
+        email_recipient=""
+        email_alerts="false"
+    fi
+    
+    # Get Signal settings
+    boxline "Do you want to use Signal notifications? (y/n): "
+    read -p "" use_signal
+    if [ "$use_signal" = "y" ] || [ "$use_signal" = "Y" ]; then
+        boxline "Enter Signal phone number (with country code): "
+        read -p "" signal_number
+        signal_alerts="true"
+        
+        # Check if signal-cli is installed
+        if ! command -v signal-cli &> /dev/null; then
+            boxline "${ylw}signal-cli is not installed. Installing now...${dfl}"
+            
+            # Install dependencies for signal-cli
+            install-packages openjdk-17-jre-headless wget unzip
+            
+            # Download and install signal-cli
+            SIGNAL_VERSION="0.11.3"
+            wget -q "https://github.com/AsamK/signal-cli/releases/download/v${SIGNAL_VERSION}/signal-cli-${SIGNAL_VERSION}.tar.gz" -O /tmp/signal-cli.tar.gz
+            tar xf /tmp/signal-cli.tar.gz -C /tmp
+            sudo mv /tmp/signal-cli-${SIGNAL_VERSION} /opt/signal-cli
+            sudo ln -sf /opt/signal-cli/bin/signal-cli /usr/local/bin/
+            
+            boxline "${ylw}You will need to register signal-cli with your number."
+            boxline "Run 'signal-cli -u $signal_number register' after installation.${dfl}"
+        fi
+    else
+        signal_number=""
+        signal_alerts="false"
+    fi
+    
+    # Get Telegram settings
+    boxline "Do you want to use Telegram notifications? (y/n): "
+    read -p "" use_telegram
+    if [ "$use_telegram" = "y" ] || [ "$use_telegram" = "Y" ]; then
+        boxline "Enter Telegram bot token: "
+        read -p "" telegram_bot_token
+        boxline "Enter Telegram chat ID: "
+        read -p "" telegram_chat_id
+        telegram_alerts="true"
+        
+        # Test Telegram integration
+        if [ -n "$telegram_bot_token" ] && [ -n "$telegram_chat_id" ]; then
+            boxline "${ylw}Testing Telegram integration...${dfl}"
+            telegram_response=$(curl -s -X POST "https://api.telegram.org/bot$telegram_bot_token/sendMessage" \
+                -d chat_id="$telegram_chat_id" \
+                -d text="Disk Health Monitoring System - Test Message")
+            
+            if echo "$telegram_response" | grep -q "\"ok\":true"; then
+                boxline "${grn}Telegram integration successful!${dfl}"
+            else
+                boxline "${lrd}Telegram integration failed. Please check your bot token and chat ID.${dfl}"
+                telegram_bot_token=""
+                telegram_chat_id=""
+                telegram_alerts="false"
+            fi
+        fi
+    else
+        telegram_bot_token=""
+        telegram_chat_id=""
+        telegram_alerts="false"
+    fi
+    
+    # Get alert threshold
+    boxline "Enter health percentage threshold for alerts [default: 20]: "
+    read -p "" alert_threshold
+    alert_threshold=${alert_threshold:-20}
+    
+    # Create the configuration file
+    boxline "${bld}Updating configuration file...${dfl}"
+    sudo bash -c "cat > $CONFIG_DIR/config.json" << EOF
+{
+    "email_alerts": $email_alerts,
+    "signal_alerts": $signal_alerts,
+    "telegram_alerts": $telegram_alerts,
+    "alert_threshold": $alert_threshold,
+    "email_recipient": "$email_recipient",
+    "signal_number": "$signal_number",
+    "telegram_bot_token": "$telegram_bot_token",
+    "telegram_chat_id": "$telegram_chat_id",
+    "check_interval_days": 1,
+    "history_retention_days": 365,
+    "ignore_disks": []
+}
+EOF
+    sudo chmod 640 "$CONFIG_DIR/config.json"
+}
+
+# Function to run initial scan
+run_initial_scan() {
+    set-boxtype "double"
+    boxtop
+    center "${bld}Running Initial Disk Health Scan${dfl}"
+    boxbottom
+    
+    sudo "$INSTALL_DIR/disk-health-monitor.sh"
+    
+    if [ $? -eq 0 ]; then
+        boxline "${grn}Initial scan completed successfully${dfl}"
+    else
+        boxline "${lrd}Warning: Initial scan failed. Check the logs at $LOG_DIR/disk-health.log${dfl}"
+    fi
+}
+
+# Function to print summary
+print_summary() {
+    set-boxtype "double"
+    boxtop
+    center "${bld}${grn}Disk Health Monitoring System${dfl}"
+    center "${bld}Installation Complete${dfl}"
+    boxseparator
+    boxline "${bld}Script location:${dfl}       $INSTALL_DIR/disk-health-monitor.sh"
+    boxline "${bld}Configuration file:${dfl}    $CONFIG_DIR/config.json"
+    boxline "${bld}Log directory:${dfl}         $LOG_DIR"
+    boxline "${bld}Database location:${dfl}     $DATA_DIR/history.db"
+    boxline "${bld}Systemd service:${dfl}       $SERVICE_NAME.service"
+    boxline "${bld}Systemd timer:${dfl}         $SERVICE_NAME.timer"
+    boxseparator
+    boxline "${bld}To manually run:${dfl}        sudo $INSTALL_DIR/disk-health-monitor.sh"
+    boxline "${bld}To view logs:${dfl}           cat $LOG_DIR/disk-health.log"
+    boxbottom
+}
+
+# Main installation process
+main() {
+    # Check if running as root using PRbL function
+    if [ "$(id -u)" -ne 0 ]; then
+        warn "This script must be run as root"
+        exit 1
+    fi
+    
+    install_base
+    setup_systemd
+    
+    # Ask user if they want to configure notifications
+    boxline "Do you want to configure notification settings? (y/n): "
+    read -p "" configure_notifs
+    if [ "$configure_notifs" = "y" ] || [ "$configure_notifs" = "Y" ]; then
+        configure_notifications
+    fi
+    
+    # Ask user if they want to run initial scan
+    boxline "Do you want to run an initial disk health scan now? (y/n): "
+    read -p "" run_scan
+    if [ "$run_scan" = "y" ] || [ "$run_scan" = "Y" ]; then
+        run_initial_scan
+    fi
+    
+    print_summary
+    success "Disk Health Monitoring System has been successfully installed!"
+}
+
+# Run the installation if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    # Trap ctrl-c to ensure clean exit
+    trap ctrl_c INT
+    main "$@"
+fi
